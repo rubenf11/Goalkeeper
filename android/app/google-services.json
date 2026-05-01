@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "415294544371",
+    "project_id": "goalkeeper-db759",
+    "storage_bucket": "goalkeeper-db759.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415294544371:android:6061bf2a60b0956334da86",
+        "android_client_info": {
+          "package_name": "com.example.goalkeeper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKzhWMQUa7lOIOzsPhrb5n2xpR6p3_4rg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/auth_service.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
 
   final Color primaryColor = const Color(0xFF006B59);
   final Color backgroundColor = const Color(0xFFF8FAFC);
@@ -9,7 +23,32 @@ class RegisterScreen extends StatelessWidget {
   final Color textColorDark = const Color(0xFF1E293B); 
   final Color textColorLight = const Color(0xFF64748B);
 
-  Widget _buildTextField(String label, String hint, IconData icon, {bool isPassword = false}) {
+  final AuthService _authService = AuthService();
+
+  Future<void> _signUp() async {
+    
+    String? result = await _authService.registerUser(
+      name: _nameController.text.trim(),
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim()
+    );
+
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account created successfully!')),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildTextField(String label, String hint, IconData icon, TextEditingController controller, {bool isPassword = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -24,6 +63,7 @@ class RegisterScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,
@@ -82,18 +122,18 @@ class RegisterScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              _buildTextField('Full Name', 'John Doe', Icons.person_outline),
-              _buildTextField('Username', '@johndoe', Icons.alternate_email),
-              _buildTextField('Email Address', 'name@example.com', Icons.email_outlined),
-              _buildTextField('Password', '••••••••', Icons.lock_outline, isPassword: true),
-              _buildTextField('Confirm Password', '••••••••', Icons.lock_reset, isPassword: true),
+              _buildTextField('Name', 'John Doe', Icons.person_outline, _nameController),
+              _buildTextField('Username', 'johndoe', Icons.alternate_email, _usernameController),
+              _buildTextField('Email Address', 'name@example.com', Icons.email_outlined, _emailController),
+              _buildTextField('Password', '••••••••', Icons.lock_outline, _passwordController, isPassword: true),
+              _buildTextField('Confirm Password', '••••••••', Icons.lock_reset, _passwordController, isPassword: true),
 
               const SizedBox(height: 12),
 
               // Sign Up Button
 
               ElevatedButton(
-                onPressed: () {},
+                onPressed: _signUp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
