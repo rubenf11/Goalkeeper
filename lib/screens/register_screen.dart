@@ -1,0 +1,144 @@
+import 'package:flutter/material.dart';
+
+class RegisterScreen extends StatelessWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
+
+  final Color primaryColor = const Color(0xFF006B59);
+  final Color backgroundColor = const Color(0xFFF8FAFC);
+  final Color inputColor = const Color(0xFFEEF2F6);
+  final Color textColorDark = const Color(0xFF1E293B); 
+  final Color textColorLight = const Color(0xFF64748B);
+
+  Widget _buildTextField(String label, String hint, IconData icon, {bool isPassword = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: textColorLight,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          obscureText: isPassword,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: textColorLight.withOpacity(0.5)),
+            prefixIcon: Icon(icon, color: textColorLight),
+            suffixIcon: isPassword ? Icon(Icons.visibility_outlined, color: textColorLight) : null,
+            filled: true,
+            fillColor: inputColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [  
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.arrow_back_ios, color: textColorDark),
+                  padding: EdgeInsets.zero,
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                'Create an Account',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: textColorDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Start your journey to growth today.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: textColorLight,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              _buildTextField('Full Name', 'John Doe', Icons.person_outline),
+              _buildTextField('Username', '@johndoe', Icons.alternate_email),
+              _buildTextField('Email Address', 'name@example.com', Icons.email_outlined),
+              _buildTextField('Password', '••••••••', Icons.lock_outline, isPassword: true),
+              _buildTextField('Confirm Password', '••••••••', Icons.lock_reset, isPassword: true),
+
+              const SizedBox(height: 12),
+
+              // Sign Up Button
+
+              ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Sign Up',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Footer
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Already have an account? ',
+                    style: TextStyle(color: textColorLight, fontSize: 14),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Log in',
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                ],
+              )
+            ],            
+          ),
+        )
+        ),
+    );
+  }
+
+}
+
