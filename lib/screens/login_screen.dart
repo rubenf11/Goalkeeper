@@ -1,14 +1,51 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
+import '../../services/auth_service.dart';
+import 'main_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
 
   final Color primaryColor = const Color(0xFF006B59);
   final Color backgroundColor = const Color(0xFFF8FAFC);
   final Color inputColor = const Color(0xFFEEF2F6);
   final Color textColorDark = const Color(0xFF1E293B); 
   final Color textColorLight = const Color(0xFF64748B);
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  final AuthService _authService = AuthService();
+
+  Future<void> _login() async {
+    FocusScope.of(context).unfocus();
+
+    String? result = await _authService.loginUser(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login successful!'), backgroundColor: Colors.green),
+      );
+
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
+
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +117,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   hintText: 'name@example.com',
@@ -107,6 +145,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
@@ -125,7 +164,7 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 32),
 
               // Login Button
-              ElevatedButton(onPressed: () => {},
+              ElevatedButton(onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,

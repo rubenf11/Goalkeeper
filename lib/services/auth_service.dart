@@ -31,4 +31,21 @@ class AuthService {
       return "Error: $e";
     }
   }
+
+  Future<String?> loginUser({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _repository.loginWithEmailAndPassword(email, password);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-credential' || e.code == 'user-not-found' || e.code == 'wrong-password') {
+        return 'Email or password incorrect.';
+      }
+      return e.message;
+    } catch (e) {
+      return "Error: $e";
+    }
+  }
 }

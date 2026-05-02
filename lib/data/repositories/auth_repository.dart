@@ -5,7 +5,7 @@ class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 1. Create User Auth
+  // Create User Auth
   Future<UserCredential> registerWithEmailAndPassword(String email, String password) async {
     return await _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
@@ -17,5 +17,9 @@ class AuthRepository {
       'email': email,
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<UserCredential> loginWithEmailAndPassword(String email, String password) async {
+    return await _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 }
