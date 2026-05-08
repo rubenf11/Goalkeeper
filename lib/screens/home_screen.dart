@@ -60,10 +60,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.edit, color: Colors.white),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: () {},
+            backgroundColor: primaryColor,
+            child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+          ),
+          SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: () {},
+            backgroundColor: primaryColor,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
 
       body: SingleChildScrollView(
