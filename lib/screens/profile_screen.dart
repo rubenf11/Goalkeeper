@@ -25,7 +25,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
-        elevation: 0,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.3),
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'GoalKeeper',
           style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
