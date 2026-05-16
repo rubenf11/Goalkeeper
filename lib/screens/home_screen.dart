@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:goalkeeper/screens/habit_details_screen.dart';
+import '../../widgets/habit_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -37,7 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
-        elevation: 0,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.3),
+        surfaceTintColor: Colors.transparent,
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
           child: CircleAvatar(
@@ -146,6 +151,36 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text('ACTIVE HABITS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
               ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // MUDAR DEPOIS O future PARA IR BUSCAR OS DADOS AO REPOSITORY!!!!
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('habits').doc('6jE0KfaXL9mjJPY7g0bf').get(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return const Text('Error while loading data');
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+                var data = snapshot.data!.data() as Map<String, dynamic>;
+
+                return HabitCard(
+                  name: data['name'] ?? 'No Name',
+                  goal: data['goal'],
+                  progress: data['progress'],
+                  unit: data['unit'],
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => HabitDetailsScreen(
+                      name: data['name'],
+                      goal: data['goal'],
+                      progress: data['progress'],
+                      unit: data['unit'],
+                      streak: data['streak'],
+                      created_at: data['created_at'],
+                    )));
+                  },
+                );
+              },
             ),
           ],
         ),
