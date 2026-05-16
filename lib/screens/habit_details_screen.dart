@@ -1,0 +1,304 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:goalkeeper/widgets/image_source_bottom_sheet.dart';
+import '../services/image_picker_helper.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+
+class HabitDetailsScreen extends StatefulWidget {
+  final String name;
+  final int goal;
+  final int progress;
+  final String unit;
+  final int streak;
+  final Timestamp created_at;
+
+  const HabitDetailsScreen({
+    Key? key,
+    required this.name,
+    required this.goal,
+    required this.progress,
+    required this.unit,
+    required this.streak,
+    required this.created_at,
+  }) : super(key: key);
+
+  @override
+  State<HabitDetailsScreen> createState() => _HabitDetailsScreen();
+}
+
+class _HabitDetailsScreen extends State<HabitDetailsScreen> {
+  final Color primaryColor = const Color(0xFF006B59);
+  final Color backgroundColor = const Color(0xFFF8FAFC);
+  final Color cardColor = Colors.white;
+  final Color textColorDark = const Color(0xFF1E293B);
+  final Color textColorLight = const Color(0xFF64748B);
+  final Color darkStreakColor = const Color(0xFF043227);
+
+  final ImagePickerHelper _imageHelper = ImagePickerHelper();
+
+  Future<void> _handleImageSelection(ImageSource source) async {
+    Navigator.of(context).pop();
+
+    final File? image = await _imageHelper.pickImage(source);
+    File? _selectedImage;
+
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Photo selected with success."))
+        );
+      }
+    }
+  }
+
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return ImageSourceBottomSheet(
+          onSourceSelected: _handleImageSelection,
+        );
+      }
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    double progressPercentage = widget.goal > 0 ? widget.progress / widget.goal : 0;
+    if (progressPercentage > 1.0) progressPercentage = 1.0;
+    DateTime date = widget.created_at.toDate();
+    String day = date.day.toString().padLeft(2, '0');
+    String month = date.month.toString().padLeft(2, '0');
+    String year = date.year.toString().padLeft(2, '0');
+    String hour = date.hour.toString().padLeft(2, '0');
+    String minute = date.minute.toString().padLeft(2, '0');
+    String habitDate = '$day/$month/$year - $hour:$minute';
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new, color: textColorDark, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.name,
+          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          PopupMenuButton(
+            icon: Icon(Icons.more_vert, color: textColorDark),
+            color: cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (String choice) {
+              if (choice == 'add_entry') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Creating Entry...')),
+                );
+              }
+              else if (choice == 'mark_completed') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Habit marked as concluded!')),
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'add_entry',
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline, color: Colors.black, size: 20),
+                    SizedBox(width: 12),
+                    Text("Add Entry"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'mark_completed',
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+                    SizedBox(width: 12),
+                    Text("Mark as completed"),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: Column(
+          children: [
+            _buildCircularProgress(progressPercentage),
+            const SizedBox(height: 32),
+
+            Row(
+              children: [
+                Expanded(child: _buildStatCard("STREAK", widget.streak.toString() + ' days')),
+                const SizedBox(width: 16),
+                Expanded(child: _buildStatCard("Created at", habitDate)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _buildDailyMomentsSection(),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: ElevatedButton.icon(
+            onPressed: _showImageSourceOptions,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF006B59),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+            label: Text(
+              "Capture Moment",
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularProgress(double percentage) {
+    return Center(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 220,
+            height: 220,
+            child: CircularProgressIndicator(
+              value: percentage,
+              strokeWidth: 20,
+              backgroundColor: primaryColor.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              strokeCap: StrokeCap.round,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.progress.toString(),
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: textColorDark,
+                  letterSpacing: -1,
+                ),
+              ),
+
+              Text(
+                "/ ${widget.goal} ${widget.unit}",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textColorLight,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColorDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyMomentsSection() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Captured Moments", style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 16)),
+            Text("View Gallery", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14)),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        SizedBox(
+          height: 100,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMomentImage(String url) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          image: DecorationImage(
+            image: NetworkImage(url),
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+}
