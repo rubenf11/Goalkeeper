@@ -3,10 +3,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/models/habit.dart';
 import '../data/repositories/habit_repository.dart';
 
+class HabitCreationResult {
+  const HabitCreationResult({this.habit, this.error});
+
+  final Habit? habit;
+  final String? error;
+}
+
 class HabitService {
   final HabitRepository _repository = HabitRepository();
 
-  Future<String?> createHabit({
+  Future<HabitCreationResult> createHabit({
     required String name,
     required String category,
     required Frequency frequency,
@@ -31,14 +38,14 @@ class HabitService {
         createdAt: null,
       );
 
-      await _repository.createHabit(habit);
-      return null;
+      final createdHabit = await _repository.createHabit(habit);
+      return HabitCreationResult(habit: createdHabit);
     } on FirebaseException catch (e) {
-      return e.message ?? 'Failed to create habit.';
+      return HabitCreationResult(error: e.message ?? 'Failed to create habit.');
     } on StateError catch (e) {
-      return e.message;
+      return HabitCreationResult(error: e.message);
     } catch (e) {
-      return 'Error: $e';
+      return HabitCreationResult(error: 'Error: $e');
     }
   }
 }

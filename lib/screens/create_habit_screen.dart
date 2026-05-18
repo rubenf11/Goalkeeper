@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models/habit.dart';
+import 'habit_details_screen.dart';
 import '../services/habit_service.dart';
 
 class CreateHabitScreen extends StatefulWidget {
@@ -71,7 +73,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
 
     final int goal = int.parse(_goalController.text.replaceAll(',', ''));
 
-    final String? error = await _habitService.createHabit(
+    final HabitCreationResult result = await _habitService.createHabit(
       name: _nameController.text,
       category: _selectedCategory,
       frequency: _selectedFrequency,
@@ -88,12 +90,17 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _isSubmitting = false;
     });
 
-    if (error != null) {
+    if (result.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red.shade700),
+        SnackBar(
+          content: Text(result.error!),
+          backgroundColor: Colors.red.shade700,
+        ),
       );
       return;
     }
+
+    final Habit createdHabit = result.habit!;
 
     _formKey.currentState?.reset();
     _nameController.clear();
@@ -106,8 +113,21 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _accelerometerEnabled = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Habit created successfully.')),
+    final Timestamp createdAt = createdHabit.createdAt == null
+        ? Timestamp.now()
+        : Timestamp.fromDate(createdHabit.createdAt!);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => HabitDetailsScreen(
+          name: createdHabit.name,
+          goal: createdHabit.goal,
+          progress: createdHabit.progress,
+          unit: createdHabit.unit,
+          streak: createdHabit.streak,
+          created_at: createdAt,
+        ),
+      ),
     );
   }
 

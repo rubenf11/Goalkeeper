@@ -25,6 +25,16 @@ class HabitRepository {
 
     await _firestore.collection('habits').doc(habitId).set(habitToSave.toMap());
 
+    final savedHabitSnapshot = await _firestore
+        .collection('habits')
+        .doc(habitId)
+        .get();
+    final savedHabitData = savedHabitSnapshot.data();
+
+    if (savedHabitData != null) {
+      return Habit.fromMap(savedHabitData, id: savedHabitSnapshot.id);
+    }
+
     return habitToSave;
   }
 
