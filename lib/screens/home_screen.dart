@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:goalkeeper/screens/habit_details_screen.dart';
+import '../data/models/habit.dart';
+import '../data/repositories/habit_repository.dart';
 import '../../widgets/habit_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,7 +22,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final Color progressBgColor = const Color(0xFFEEF2F6);
   final Color completedCardColor = const Color(0xFF006B59);
 
+  final HabitRepository _habitRepository = HabitRepository();
   final User? currentUser = FirebaseAuth.instance.currentUser;
+  late final Stream<List<Habit>> _habitsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _habitsStream = _habitRepository.watchCurrentUserHabits();
+  }
 
   String getFirstName() {
     String fullName = currentUser?.displayName ?? 'User';
@@ -59,9 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Settings Button
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: textColorLight),  
+            icon: Icon(Icons.settings_outlined, color: textColorLight),
             onPressed: () {},
-          )
+          ),
         ],
       ),
 
@@ -89,12 +99,20 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               '${getGreeting()}, ${getFirstName()}!',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColorDark),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: textColorDark,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               '"Focus on progress, not perfection. Every step counts."',
-              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: textColorLight),
+              style: TextStyle(
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+                color: textColorLight,
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -105,8 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [  
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: Column(
@@ -121,14 +143,31 @@ class _HomeScreenState extends State<HomeScreen> {
                             value: 0.75,
                             strokeWidth: 12,
                             backgroundColor: progressBgColor,
-                            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              primaryColor,
+                            ),
                           ),
                           Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('75%', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
-                                Text("TODAY'S GOAL", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
+                                Text(
+                                  '75%',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                Text(
+                                  "TODAY'S GOAL",
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColorLight,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -137,9 +176,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const SizedBox(height: 24),
-                    Text('Daily Progress', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColorDark)),
+                    Text(
+                      'Daily Progress',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColorDark,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('3 of 4 habits completed', style: TextStyle(color: textColorLight)),
+                    Text(
+                      '3 of 4 habits completed',
+                      style: TextStyle(color: textColorLight),
+                    ),
                   ],
                 ),
               ),
@@ -149,44 +198,83 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('ACTIVE HABITS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
+                Text(
+                  'ACTIVE HABITS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColorLight,
+                    letterSpacing: 1,
+                  ),
+                ),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // MUDAR DEPOIS O future PARA IR BUSCAR OS DADOS AO REPOSITORY!!!!
-            FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('habits').doc('6jE0KfaXL9mjJPY7g0bf').get(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return const Text('Error while loading data');
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            if (currentUser == null)
+              Text(
+                'Sign in to see your habits.',
+                style: TextStyle(color: textColorLight),
+              )
+            else
+              StreamBuilder<List<Habit>>(
+                stream: _habitsStream,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Text('Error while loading data');
+                  }
 
-                var data = snapshot.data!.data() as Map<String, dynamic>;
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                return HabitCard(
-                  name: data['name'] ?? 'No Name',
-                  goal: data['goal'],
-                  progress: data['progress'],
-                  unit: data['unit'],
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => HabitDetailsScreen(
-                      name: data['name'],
-                      goal: data['goal'],
-                      progress: data['progress'],
-                      unit: data['unit'],
-                      streak: data['streak'],
-                      created_at: data['created_at'],
-                    )));
-                  },
-                );
-              },
-            ),
+                  final habits = snapshot.data ?? const <Habit>[];
+
+                  if (habits.isEmpty) {
+                    return Text(
+                      'No habits created yet.',
+                      style: TextStyle(color: textColorLight),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: habits.length,
+                    itemBuilder: (context, index) {
+                      final habit = habits[index];
+
+                      return HabitCard(
+                        name: habit.name,
+                        goal: habit.goal,
+                        progress: habit.progress,
+                        unit: habit.unit,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HabitDetailsScreen(
+                                name: habit.name,
+                                goal: habit.goal,
+                                progress: habit.progress,
+                                unit: habit.unit,
+                                streak: habit.streak,
+                                created_at: Timestamp.fromDate(
+                                  habit.createdAt ?? DateTime.now(),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
           ],
         ),
       ),
-
     );
   }
-
 }

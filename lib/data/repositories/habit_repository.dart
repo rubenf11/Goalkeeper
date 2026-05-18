@@ -27,4 +27,32 @@ class HabitRepository {
 
     return habitToSave;
   }
+
+  Stream<List<Habit>> watchCurrentUserHabits() {
+    final currentUser = _auth.currentUser;
+
+    if (currentUser == null) {
+      return Stream<List<Habit>>.value(const <Habit>[]);
+    }
+
+    return _firestore
+        .collection('habits')
+        .where('user_id', isEqualTo: currentUser.uid)
+        .snapshots()
+        .map((snapshot) {
+          final habits = snapshot.docs
+              .map((doc) => Habit.fromMap(doc.data(), id: doc.id))
+              .toList();
+
+          habits.sort(
+            (first, second) =>
+                (second.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                    .compareTo(
+                      first.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+                    ),
+          );
+
+          return habits;
+        });
+  }
 }
