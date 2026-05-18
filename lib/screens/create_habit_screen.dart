@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../data/models/habit.dart';
 import 'habit_details_screen.dart';
 import '../services/habit_service.dart';
+import '../widgets/habit_category_catalog.dart';
 
 class CreateHabitScreen extends StatefulWidget {
   const CreateHabitScreen({Key? key}) : super(key: key);
@@ -25,27 +26,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   final Color _backgroundColor = const Color(0xFFF8FAFC);
   final Color _textColorDark = const Color(0xFF1E293B);
   final Color _textColorLight = const Color(0xFF64748B);
-  final List<_HabitCategoryOption> _categories = const [
-    _HabitCategoryOption('Health & Fitness', Icons.fitness_center),
-    _HabitCategoryOption('Mental Wellness', Icons.psychology_outlined),
-    _HabitCategoryOption('Productivity', Icons.bolt_outlined),
-    _HabitCategoryOption('Learning', Icons.menu_book_outlined),
-    _HabitCategoryOption('Career', Icons.work_outline),
-    _HabitCategoryOption('Finance', Icons.account_balance_wallet_outlined),
-    _HabitCategoryOption('Relationships', Icons.favorite_border),
-    _HabitCategoryOption('Home', Icons.home_outlined),
-    _HabitCategoryOption('Creativity', Icons.palette_outlined),
-    _HabitCategoryOption('Spirituality', Icons.self_improvement),
-    _HabitCategoryOption('Nutrition', Icons.restaurant_outlined),
-    _HabitCategoryOption('Hobbies', Icons.sports_esports_outlined),
-    _HabitCategoryOption('Personal Growth', Icons.trending_up),
-    _HabitCategoryOption('Travel', Icons.flight_takeoff_outlined),
-    _HabitCategoryOption('Family', Icons.people_outline),
-    _HabitCategoryOption('Pet Care', Icons.pets_outlined),
-    _HabitCategoryOption('Community & Volunteering', Icons.groups_outlined),
-    _HabitCategoryOption('Addiction Recovery', Icons.healing_outlined),
-    _HabitCategoryOption('Other', Icons.more_horiz),
-  ];
+  final List<HabitCategoryOption> _categories = HabitCategoryCatalog.options;
 
   String _selectedCategory = 'Health & Fitness';
   Frequency _selectedFrequency = Frequency.daily;
@@ -158,7 +139,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
     return value[0].toUpperCase() + value.substring(1);
   }
 
-  Widget _buildCategoryCard(_HabitCategoryOption category) {
+  Widget _buildCategoryCard(HabitCategoryOption category) {
     final bool isSelected = category.name == _selectedCategory;
 
     return Material(
@@ -521,11 +502,4 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       ),
     );
   }
-}
-
-class _HabitCategoryOption {
-  const _HabitCategoryOption(this.name, this.icon);
-
-  final String name;
-  final IconData icon;
 }

@@ -246,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       final habit = habits[index];
 
                       return HabitCard(
+                        category: habit.category,
                         name: habit.name,
                         goal: habit.goal,
                         progress: habit.progress,

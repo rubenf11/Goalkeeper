@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'habit_category_catalog.dart';
+
 class HabitCard extends StatelessWidget {
+  final String category;
   final String name;
   final int goal;
   final int progress;
@@ -9,6 +12,7 @@ class HabitCard extends StatelessWidget {
 
   const HabitCard({
     Key? key,
+    required this.category,
     required this.name,
     required this.goal,
     required this.progress,
@@ -16,12 +20,12 @@ class HabitCard extends StatelessWidget {
     this.onTap,
   }) : super(key: key);
 
-
   @override
   Widget build(BuildContext context) {
     double progressPercent = goal > 0 ? progress / goal : 0;
+    final categoryOption = HabitCategoryCatalog.optionFor(category);
 
-    final Color primaryColor = const Color(0xFF006B59); 
+    final Color primaryColor = const Color(0xFF006B59);
     final Color textColorDark = const Color(0xFF1E293B);
     final Color textColorLight = const Color(0xFF64748B);
     final Color progressBgColor = const Color(0xFFEEF2F6);
@@ -51,7 +55,7 @@ class HabitCard extends StatelessWidget {
                 color: primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.auto_awesome, color: primaryColor, size: 24),
+              child: Icon(categoryOption.icon, color: primaryColor, size: 24),
             ),
 
             const SizedBox(width: 16),
@@ -66,7 +70,7 @@ class HabitCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: textColorDark
+                      color: textColorDark,
                     ),
                   ),
 
