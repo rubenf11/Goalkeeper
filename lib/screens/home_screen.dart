@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:goalkeeper/screens/habit_details_screen.dart';
 import '../../widgets/habit_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -168,7 +169,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   goal: data['goal'],
                   progress: data['progress'],
                   unit: data['unit'],
-                  primaryColor: primaryColor,
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => HabitDetailsScreen(
+                      name: data['name'],
+                      goal: data['goal'],
+                      progress: data['progress'],
+                      unit: data['unit'],
+                      streak: data['streak'],
+                      created_at: data['created_at'],
+                    )));
+                  },
                 );
               },
             ),
