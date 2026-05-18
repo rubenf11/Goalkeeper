@@ -71,6 +71,66 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
+  Future<void> _showConfirmationDialog() async {
+    bool _isDone = false;
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(16),
+          ),
+          title: Text(
+            "Mark as Completed",
+            style: TextStyle(color: textColorDark, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "Are you sure you want to mark this habit as completed?",
+            style: TextStyle(color: textColorLight),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: textColorLight, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadiusGeometry.circular(8)
+                ),
+              ),
+              child: Text(
+                "Confirm",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                setState(() {
+                  _isDone = true;
+                });
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Habit marked as completed!')),
+                );
+              },
+            ),
+
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -113,9 +173,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 );
               }
               else if (choice == 'mark_completed') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Habit marked as concluded!')),
-                );
+                _showConfirmationDialog();
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
