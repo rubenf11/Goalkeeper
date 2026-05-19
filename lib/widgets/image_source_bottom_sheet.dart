@@ -7,9 +7,9 @@ class ImageSourceBottomSheet extends StatelessWidget {
   final Function(ImageSource) onSourceSelected; 
 
   const ImageSourceBottomSheet({
-    Key? key,
+    super.key,
     required this.onSourceSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

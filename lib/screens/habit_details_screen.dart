@@ -14,14 +14,14 @@ class HabitDetailsScreen extends StatefulWidget {
   final Timestamp created_at;
 
   const HabitDetailsScreen({
-    Key? key,
+    super.key,
     required this.name,
     required this.goal,
     required this.progress,
     required this.unit,
     required this.streak,
     required this.created_at,
-  }) : super(key: key);
+  });
 
   @override
   State<HabitDetailsScreen> createState() => _HabitDetailsScreen();
@@ -41,11 +41,11 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     Navigator.of(context).pop();
 
     final File? image = await _imageHelper.pickImage(source);
-    File? _selectedImage;
+    File? selectedImage;
 
     if (image != null) {
       setState(() {
-        _selectedImage = image;
+        selectedImage = image;
       });
 
       if (mounted) {
@@ -153,7 +153,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
             Row(
               children: [
-                Expanded(child: _buildStatCard("STREAK", widget.streak.toString() + ' days')),
+                Expanded(child: _buildStatCard("STREAK", '${widget.streak} days')),
                 const SizedBox(width: 16),
                 Expanded(child: _buildStatCard("Created at", habitDate)),
               ],
