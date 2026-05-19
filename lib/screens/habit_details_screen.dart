@@ -4,8 +4,10 @@ import 'package:goalkeeper/widgets/image_source_bottom_sheet.dart';
 import '../services/image_picker_helper.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'add_entry_screen.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
+  final String habitId;
   final String name;
   final int goal;
   final int progress;
@@ -15,6 +17,7 @@ class HabitDetailsScreen extends StatefulWidget {
 
   const HabitDetailsScreen({
     Key? key,
+    required this.habitId,
     required this.name,
     required this.goal,
     required this.progress,
@@ -71,6 +74,65 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
+  Future<void> _showConfirmationDialog() async {
+    bool _isDone = false;
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(16),
+          ),
+          title: Text(
+            "Mark as Completed",
+            style: TextStyle(color: textColorDark, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "Are you sure you want to mark this habit as completed?",
+            style: TextStyle(color: textColorLight),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: textColorLight, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadiusGeometry.circular(8)
+                ),
+              ),
+              child: Text(
+                "Confirm",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                setState(() {
+                  _isDone = true;
+                });
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Habit marked as completed!')),
+                );
+              },
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -108,14 +170,20 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             ),
             onSelected: (String choice) {
               if (choice == 'add_entry') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Creating Entry...')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddEntryScreen(
+                      habitId: widget.habitId,
+                      habitName: widget.name,
+                      habitUnit: widget.unit,
+                      currentProgress: widget.progress,
+                    ),
+                  ),
                 );
               }
               else if (choice == 'mark_completed') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Habit marked as concluded!')),
-                );
+                _showConfirmationDialog();
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -163,27 +231,6 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             _buildDailyMomentsSection(),
             const SizedBox(height: 24),
           ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: ElevatedButton.icon(
-            onPressed: _showImageSourceOptions,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF006B59),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              elevation: 0,
-            ),
-            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-            label: Text(
-              "Capture Moment",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
         ),
       ),
     );

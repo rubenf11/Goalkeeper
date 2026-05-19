@@ -256,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => HabitDetailsScreen(
+                                habitId: habit.habitId,
                                 name: habit.name,
                                 goal: habit.goal,
                                 progress: habit.progress,
