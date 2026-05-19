@@ -47,6 +47,7 @@ class Habit {
     required this.streak,
     required this.isDone,
     required this.createdAt,
+    this.lastEntryAt,
   });
 
   final String habitId;
@@ -62,6 +63,7 @@ class Habit {
   final int streak;
   final bool isDone;
   final DateTime? createdAt;
+  final DateTime? lastEntryAt;
 
   Habit copyWith({
     String? habitId,
@@ -77,6 +79,7 @@ class Habit {
     int? streak,
     bool? isDone,
     DateTime? createdAt,
+    DateTime? lastEntryAt,
   }) {
     return Habit(
       habitId: habitId ?? this.habitId,
@@ -92,6 +95,7 @@ class Habit {
       streak: streak ?? this.streak,
       isDone: isDone ?? this.isDone,
       createdAt: createdAt ?? this.createdAt,
+      lastEntryAt: lastEntryAt ?? this.lastEntryAt,
     );
   }
 
@@ -112,11 +116,15 @@ class Habit {
       'created_at': createdAt == null
           ? FieldValue.serverTimestamp()
           : Timestamp.fromDate(createdAt!),
+      'last_entry_at': lastEntryAt == null
+          ? null
+          : Timestamp.fromDate(lastEntryAt!),
     };
   }
 
   factory Habit.fromMap(Map<String, dynamic> map, {required String id}) {
     final createdAt = map['created_at'];
+    final lastEntryAt = map['last_entry_at'];
 
     return Habit(
       habitId: map['habit_id'] as String? ?? id,
@@ -132,6 +140,7 @@ class Habit {
       streak: (map['streak'] as num?)?.toInt() ?? 0,
       isDone: map['is_done'] as bool? ?? false,
       createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
+      lastEntryAt: lastEntryAt is Timestamp ? lastEntryAt.toDate() : null,
     );
   }
 
