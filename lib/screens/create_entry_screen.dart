@@ -32,22 +32,35 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
   }
 
   Future<void> _updateProgress() async {
-    if (_selectedHabitId == null || _progressController.text.isEmpty) return;
+    if (_selectedHabitId == null || _progressController.text.isEmpty || currentUser == null) return;
 
     int increment = int.tryParse(_progressController.text) ?? 0;
     if (increment <= 0) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('habits')
-          .doc(_selectedHabitId)
-          .update({
+      final habitRef = FirebaseFirestore.instance.collection('habits').doc(_selectedHabitId);
+
+      // Create a batch to ensure both operations succeed or fail together
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      // 1. Update the habit progress
+      batch.update(habitRef, {
         'progress': FieldValue.increment(increment),
       });
 
+      // 2. Add an entry to the subcollection
+      DocumentReference entryRef = habitRef.collection('entries').doc();
+      batch.set(entryRef, {
+        'amount': increment,
+        'timestamp': FieldValue.serverTimestamp(),
+        'user_id': currentUser!.uid,
+      });
+
+      await batch.commit();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Progress updated successfully!')),
+          const SnackBar(content: Text('Entry saved successfully!')),
         );
         setState(() {
           _progressController.clear();
@@ -58,7 +71,7 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating progress: $e')),
+          SnackBar(content: Text('Error saving entry: $e')),
         );
       }
     }

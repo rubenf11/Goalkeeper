@@ -134,4 +134,6 @@ class Habit {
       createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
     );
   }
+
+  String get id => habitId;
 }

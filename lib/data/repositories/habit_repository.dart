@@ -38,6 +38,29 @@ class HabitRepository {
     return habitToSave;
   }
 
+  Future<void> addEntry(String habitId, int amount) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) throw StateError('User not authenticated');
+
+    final habitRef = _firestore.collection('habits').doc(habitId);
+    final batch = _firestore.batch();
+
+    // 1. Increment progress
+    batch.update(habitRef, {
+      'progress': FieldValue.increment(amount),
+    });
+
+    // 2. Create entry record
+    final entryRef = habitRef.collection('entries').doc();
+    batch.set(entryRef, {
+      'amount': amount,
+      'timestamp': FieldValue.serverTimestamp(),
+      'user_id': currentUser.uid,
+    });
+
+    await batch.commit();
+  }
+
   Stream<List<Habit>> watchCurrentUserHabits() {
     final currentUser = _auth.currentUser;
 
