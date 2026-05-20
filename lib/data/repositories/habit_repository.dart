@@ -71,13 +71,14 @@ class HabitRepository {
 
     for (var doc in entriesSnap.docs) {
       final data = doc.data();
-      final timestamp = data['timestamp'] as Timestamp?;
-      if (timestamp == null) continue;
 
-      final date = timestamp.toDate();
+      final timestamp = data['timestamp'] as Timestamp?;
+
+      final date = timestamp?.toDate() ?? now;
+
       final dayKey = DateTime(date.year, date.month, date.day);
-      
       final amount = (data['amount'] as num?)?.toInt() ?? 0;
+
       dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + amount;
     }
 
