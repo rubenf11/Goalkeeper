@@ -101,6 +101,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => HabitDetailsScreen(
+          habitId: createdHabit.id,
           name: createdHabit.name,
           goal: createdHabit.goal,
           progress: createdHabit.progress,

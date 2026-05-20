@@ -8,6 +8,7 @@ class HabitCard extends StatelessWidget {
   final int goal;
   final int progress;
   final String unit;
+  final int streak;
   final VoidCallback? onTap;
 
   const HabitCard({
@@ -17,6 +18,7 @@ class HabitCard extends StatelessWidget {
     required this.goal,
     required this.progress,
     required this.unit,
+    required this.streak,
     this.onTap,
   }) : super(key: key);
 
@@ -65,13 +67,40 @@ class HabitCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: textColorDark,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: textColorDark,
+                        ),
+                      ),
+                      if (streak > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.local_fire_department, color: Colors.orange, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$streak',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
 
                   const SizedBox(height: 8),

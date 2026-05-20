@@ -2,12 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:goalkeeper/screens/habit_details_screen.dart';
+import 'package:goalkeeper/screens/create_entry_screen.dart';
 import '../data/models/habit.dart';
 import '../data/repositories/habit_repository.dart';
 import '../../widgets/habit_card.dart';
+import '';
+import '../services/habit_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -30,6 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _habitsStream = _habitRepository.watchCurrentUserHabits();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      refreshAllHabits();
+    });
   }
 
   String getFirstName() {
@@ -42,6 +49,31 @@ class _HomeScreenState extends State<HomeScreen> {
     if (hour < 12) return 'Good morning';
     if (hour < 19) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  Future<void> refreshAllHabits() async {final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  try {
+    // Query habits where user_id matches the current user
+    print("DEBUG: Fetching habits for user: ${user.uid}");
+    final snapshot = await FirebaseFirestore.instance
+        .collection('habits')
+        .where('user_id', isEqualTo: user.uid)
+        .get();
+
+
+    print("DEBUG: Found ${snapshot.docs.length} habits to recalculate");
+
+    final habitService = HabitService(); // Initialize your service
+
+    for (var doc in snapshot.docs) {
+      await habitService.recalculateHabitStats(doc.id);
+    }
+    print("DEBUG: Refresh complete");
+  } catch (e) {
+    debugPrint("Error refreshing habits: $e");
+  }
   }
 
   @override
@@ -75,21 +107,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {},
-            backgroundColor: primaryColor,
-            child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-          ),
-          SizedBox(height: 10),
-          FloatingActionButton(
-            onPressed: () {},
-            backgroundColor: primaryColor,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CreateEntryScreen()),
+          );
+        },
+        backgroundColor: primaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
 
       body: SingleChildScrollView(
@@ -251,11 +277,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         goal: habit.goal,
                         progress: habit.progress,
                         unit: habit.unit,
+                        streak: habit.streak,
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => HabitDetailsScreen(
+                                habitId: habit.id,
                                 name: habit.name,
                                 goal: habit.goal,
                                 progress: habit.progress,
