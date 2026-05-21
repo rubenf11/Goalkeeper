@@ -5,6 +5,7 @@ import '../data/repositories/habit_repository.dart';
 import '../services/image_picker_helper.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'add_entry_screen.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   final String habitId;
@@ -40,39 +41,62 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final HabitRepository _habitRepository = HabitRepository();
   final ImagePickerHelper _imageHelper = ImagePickerHelper();
 
-  void _showAddEntryDialog() {
-    final TextEditingController controller = TextEditingController();
-    showDialog(
+  Future<void> _showConfirmationDialog() async {
+    bool _isDone = false;
+
+    return showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Entry for ${widget.name}'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            hintText: 'Amount',
-            suffixText: widget.unit,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(16),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              int? amount = int.tryParse(controller.text);
-              if (amount != null && amount > 0) {
-                await _habitRepository.addEntry(widget.habitId, amount);
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Entry added successfully!')),
-                  );
-                }
-              }
-            },
-            child: const Text('Add'),
+          title: Text(
+            "Mark as Completed",
+            style: TextStyle(color: textColorDark, fontWeight: FontWeight.bold),
           ),
-        ],
-      ),
+          content: Text(
+            "Are you sure you want to mark this habit as completed?",
+            style: TextStyle(color: textColorLight),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: textColorLight, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadiusGeometry.circular(8)
+                ),
+              ),
+              child: Text(
+                "Confirm",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                setState(() {
+                  _isDone = true;
+                });
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Habit marked as completed!')),
+                );
+              },
+            ),
+          ],
+        );
+      }
     );
   }
 
@@ -139,11 +163,49 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             actions: [
               PopupMenuButton(
                 icon: Icon(Icons.more_vert, color: textColorDark),
+                color: cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 onSelected: (String choice) {
-                  if (choice == 'add_entry') _showAddEntryDialog();
+                  if (choice == 'add_entry') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddEntryScreen(
+                          habitId: widget.habitId,
+                          habitName: widget.name,
+                          habitUnit: widget.unit,
+                          currentProgress: widget.progress,
+                        ),
+                      ),
+                    );
+                  }
+                  else if (choice == 'mark_completed') {
+                    _showConfirmationDialog();
+                  }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'add_entry', child: Text("Add Entry")),
+                  const PopupMenuItem(
+                    value: 'add_entry',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline, color: Colors.black, size: 20),
+                        SizedBox(width: 12),
+                        Text("Add Entry"),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'mark_completed',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+                        SizedBox(width: 12),
+                        Text("Mark as completed"),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -162,23 +224,12 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                
+
+                const SizedBox(height: 24),
                 _buildDailyMomentsSection(),
               ],
-            ),
-          ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: ElevatedButton.icon(
-                onPressed: _showImageSourceOptions,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-                label: const Text("Capture Moment", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
             ),
           ),
         );
