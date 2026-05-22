@@ -8,7 +8,7 @@ class EntryRepository {
     required String habitId,
     required String entryId,
     required double value,
-    required Timestamp createdAt,
+    required Timestamp timestamp,
   }) async {
     await _firestore
         .collection('habits')
@@ -17,7 +17,7 @@ class EntryRepository {
         .doc(entryId)
         .set({
       'value': value,
-      'created_at': createdAt,
+      'timestamp': timestamp,
     });
   }
 

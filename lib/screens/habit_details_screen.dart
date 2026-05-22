@@ -41,6 +41,15 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final HabitRepository _habitRepository = HabitRepository();
   final ImagePickerHelper _imageHelper = ImagePickerHelper();
 
+  String _selectedPeriod = 'Daily';
+  late final Stream<Map<String, num>> _chartStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _chartStream = _habitRepository.watchDailyProgress(widget.habitId);
+  }
+
   Future<void> _showConfirmationDialog() async {
     bool _isDone = false;
 
@@ -224,8 +233,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-
-                
+                _buildChartSection(),
 
                 const SizedBox(height: 24),
                 _buildDailyMomentsSection(),
@@ -296,6 +304,140 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         ),
         const SizedBox(height: 16),
         const SizedBox(height: 100, child: Center(child: Text("No moments captured today", style: TextStyle(color: Colors.grey)))),
+      ],
+    );
+  }
+
+  Widget _buildChartSection() {
+    Stream<Map<String,num>> currentStream;
+
+    if (_selectedPeriod == 'Daily') {
+      currentStream = _habitRepository.watchDailyProgress(widget.habitId);
+    }
+    else if (_selectedPeriod == 'Weekly') {
+
+    }
+    else {
+
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Activity Overview",
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: textColorDark, 
+            fontSize: 16
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4), 
+              ),
+            ],
+          ),
+          child: StreamBuilder<Map<String,num>>(
+            stream: _chartStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    "Error while loading stats data", 
+                    style: TextStyle(color: textColorLight)
+                  )
+                );
+              }
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final progressMap = snapshot.data ?? {};
+
+              final DateTime now = DateTime.now();
+              final List<DateTime> last7Days = List.generate(
+                7, 
+                (index) => now.subtract(Duration(days: 6 - index)),
+              );
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: last7Days.map((date) {
+                  String dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+                  num progress = progressMap[dateStr] ?? 0;
+                  double percentage = widget.goal > 0.0 ? (progress / widget.goal) : 0.0;
+                  if (percentage > 1) percentage = 1;
+
+                  final List<String> weekdays = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                  String dayLabel = weekdays[date.weekday];
+
+                  bool isToday = date.day == now.day && 
+                                 date.month == now.month && 
+                                 date.year == now.year;
+                  
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        progress.toInt().toString(),
+                        style: TextStyle(
+                          fontSize: 10, 
+                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                          color: isToday ? primaryColor : textColorLight
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 120,
+                        width: 14,
+                        decoration: BoxDecoration(
+                          color: backgroundColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.bottomCenter,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut,
+                          height: 120 * percentage,
+                          decoration: BoxDecoration(
+                            color: percentage >= 1.0 ? primaryColor : primaryColor.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        dayLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                          color: isToday ? primaryColor : textColorDark,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),    
+              );
+            },
+          ),
+        ),
       ],
     );
   }
