@@ -27,6 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   late final Stream<List<Habit>> _habitsStream;
 
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -159,7 +168,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDailyProgressCard(habits),
+                        SizedBox(
+                          height: 300,
+                          child: PageView(
+                            controller: _pageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentPage = index;
+                              });
+                            },
+                            children: [
+                              _buildProgressCard(
+                                title: "Daily Progress",
+                                habits: habits,
+                                frequency: Frequency.daily,
+                                typeLabel: "daily",
+                              ),
+                              _buildProgressCard(
+                                title: "Weekly Progress",
+                                habits: habits,
+                                frequency: Frequency.weekly,
+                                typeLabel: "weekly",
+                              ),
+                              _buildProgressCard(
+                                title: "Monthly Progress",
+                                habits: habits,
+                                frequency: Frequency.monthly,
+                                typeLabel: "monthly",
+                              )
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -317,6 +356,88 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 32),
           Text(
             "$completedDaily of $totalDaily daily habits completed",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: textColorLight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressCard({
+    required String title,
+    required List<Habit> habits,
+    required Frequency frequency,
+    required String typeLabel,
+  }) {
+    final filteredHabits = habits.where((h) => h.frequency == frequency).toList();
+    final int total = filteredHabits.length;
+    final int completed = filteredHabits.where((h) => h.goalReached).length;
+    final double percentage = total > 0 ? completed / total : 0.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColorDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 140,
+                height: 140,
+                child: CircularProgressIndicator(
+                  value: percentage,
+                  strokeWidth: 12,
+                  backgroundColor: progressBgColor,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
+              ),
+              Text(
+                "${(percentage * 100).toInt()}%",
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: textColorDark,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+          Text(
+            total > 0 
+                ? "$completed of $total $typeLabel habits completed"
+                : "No $typeLabel habits created.",
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15,

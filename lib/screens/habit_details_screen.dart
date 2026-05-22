@@ -418,7 +418,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           curve: Curves.easeInOut,
                           height: 120 * percentage,
                           decoration: BoxDecoration(
-                            color: percentage >= 1.0 ? primaryColor : primaryColor.withOpacity(0.4),
+                            color: percentage >= 1.0 ? Colors.blue : Colors.red.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
