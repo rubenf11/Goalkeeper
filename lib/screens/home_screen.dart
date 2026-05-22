@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:goalkeeper/screens/habit_details_screen.dart';
 import 'package:goalkeeper/screens/create_entry_screen.dart';
 import '../data/models/habit.dart';
-import '../data/repositories/habit_repository.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/habit_card.dart';
-import '';
 import '../services/habit_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,14 +24,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final Color progressBgColor = const Color(0xFFEEF2F6);
   final Color completedCardColor = const Color(0xFF006B59);
 
-  final HabitRepository _habitRepository = HabitRepository();
   final User? currentUser = FirebaseAuth.instance.currentUser;
   late final Stream<List<Habit>> _habitsStream;
+
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    _habitsStream = _habitRepository.watchCurrentUserHabits();
+    _habitsStream = context.read<HabitService>().watchCurrentUserHabits();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       refreshAllHabits();
@@ -144,79 +151,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Daily progress container
             Center(
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 120,
-                      width: 120,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CircularProgressIndicator(
-                            value: 0.75,
-                            strokeWidth: 12,
-                            backgroundColor: progressBgColor,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              primaryColor,
-                            ),
-                          ),
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '75%',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryColor,
-                                  ),
-                                ),
-                                Text(
-                                  "TODAY'S GOAL",
-                                  style: TextStyle(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColorLight,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              child: StreamBuilder<List<Habit>>(
+                stream: _habitsStream,
+                builder: (context, snapshot) {
+                  if(snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  if(snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  final habits = snapshot.data ?? [];
 
-                    const SizedBox(height: 24),
-                    Text(
-                      'Daily Progress',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColorDark,
-                      ),
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 300,
+                          child: PageView(
+                            controller: _pageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentPage = index;
+                              });
+                            },
+                            children: [
+                              _buildProgressCard(
+                                title: "Daily Progress",
+                                habits: habits,
+                                frequency: Frequency.daily,
+                                typeLabel: "daily",
+                              ),
+                              _buildProgressCard(
+                                title: "Weekly Progress",
+                                habits: habits,
+                                frequency: Frequency.weekly,
+                                typeLabel: "weekly",
+                              ),
+                              _buildProgressCard(
+                                title: "Monthly Progress",
+                                habits: habits,
+                                frequency: Frequency.monthly,
+                                typeLabel: "monthly",
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '3 of 4 habits completed',
-                      style: TextStyle(color: textColorLight),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 32),
@@ -303,6 +289,163 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDailyProgressCard(List<Habit> habits) {
+    final dailyHabits = habits.where((h) => h.frequency == Frequency.daily).toList();
+    final int totalDaily = dailyHabits.length;
+    final int completedDaily = dailyHabits.where((h) => h.goalReached).length;
+    final double percentage = totalDaily > 0 ? completedDaily / totalDaily : 0.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              "Daily Progress",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColorDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 140,
+                height: 140,
+                child: CircularProgressIndicator(
+                  value: percentage,
+                  strokeWidth: 12,
+                  backgroundColor: progressBgColor,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
+              ),
+              Text(
+                "${(percentage * 100).toInt()}%",
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: textColorDark,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+          Text(
+            "$completedDaily of $totalDaily daily habits completed",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: textColorLight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressCard({
+    required String title,
+    required List<Habit> habits,
+    required Frequency frequency,
+    required String typeLabel,
+  }) {
+    final filteredHabits = habits.where((h) => h.frequency == frequency).toList();
+    final int total = filteredHabits.length;
+    final int completed = filteredHabits.where((h) => h.goalReached).length;
+    final double percentage = total > 0 ? completed / total : 0.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColorDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 140,
+                height: 140,
+                child: CircularProgressIndicator(
+                  value: percentage,
+                  strokeWidth: 12,
+                  backgroundColor: progressBgColor,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
+              ),
+              Text(
+                "${(percentage * 100).toInt()}%",
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: textColorDark,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+          Text(
+            total > 0 
+                ? "$completed of $total $typeLabel habits completed"
+                : "No $typeLabel habits created.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: textColorLight,
+            ),
+          ),
+        ],
       ),
     );
   }

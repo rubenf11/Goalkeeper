@@ -135,4 +135,12 @@ class HabitService {
       'goal_reached': progressToday >= goal,
     });
   }
+
+  Stream<List<Habit>> watchCurrentUserHabits() {
+    return _repository.watchCurrentUserHabits();
+  }
+
+  Stream<Map<String, num>> watchDailyProgress(String habitId) {
+    return _repository.watchDailyProgress(habitId);
+  }
 }

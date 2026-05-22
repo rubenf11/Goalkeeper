@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/repositories/entry_repository.dart';
 
@@ -18,7 +17,7 @@ class EntryService {
         habitId: habitId,
         entryId: entryId,
         value: value,
-        createdAt: now,
+        timestamp: now,
       );
 
       int updatedProgress = currentProgress + value.toInt();

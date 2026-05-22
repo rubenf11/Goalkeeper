@@ -46,9 +46,8 @@ class HabitRepository {
 
     // 1. Add the entry to the subcollection
     await habitRef.collection('entries').add({
-      'amount': amount,
+      'value': amount,
       'timestamp': FieldValue.serverTimestamp(),
-      'user_id': currentUser.uid,
     });
 
     // 2. Recalculate stats
@@ -77,7 +76,7 @@ class HabitRepository {
       final date = timestamp?.toDate() ?? now;
 
       final dayKey = DateTime(date.year, date.month, date.day);
-      final amount = (data['amount'] as num?)?.toInt() ?? 0;
+      final amount = (data['value'] as num?)?.toInt() ?? 0;
 
       dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + amount;
     }
@@ -144,5 +143,33 @@ class HabitRepository {
 
           return habits;
         });
+  }
+
+  Stream<Map<String, num>> watchDailyProgress(String habitId) {
+    final now = DateTime.now();
+    final sevenDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+
+    return _firestore
+      .collection('habits')
+      .doc(habitId)
+      .collection('entries')
+      .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
+      .snapshots()
+      .map((snapshot) {
+        Map<String, num> progressMap = {};
+
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (timestamp == null) continue;
+
+          final date = timestamp.toDate();
+          final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+          final amount = (data['value'] ?? 0);
+
+          progressMap[dateString] = (progressMap[dateString] ?? 0) + amount;
+        } 
+        return progressMap;
+      });
   }
 }
