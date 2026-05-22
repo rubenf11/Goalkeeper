@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'habit_repository.dart';
 
 class EntryRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final HabitRepository _habitRepository = HabitRepository();
   
   Future<void> saveEntry({
     required String habitId,
@@ -19,6 +20,8 @@ class EntryRepository {
       'value': value,
       'timestamp': timestamp,
     });
+
+    await _habitRepository.recalculateHabitStats(habitId);
   }
 
   Future<void> updateHabitProgress({

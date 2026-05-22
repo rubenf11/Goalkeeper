@@ -6,6 +6,8 @@ import '../services/image_picker_helper.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'add_entry_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/habit_service.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   final String habitId;
@@ -38,7 +40,6 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final Color textColorDark = const Color(0xFF1E293B);
   final Color textColorLight = const Color(0xFF64748B);
   
-  final HabitRepository _habitRepository = HabitRepository();
   final ImagePickerHelper _imageHelper = ImagePickerHelper();
 
   String _selectedPeriod = 'Daily';
@@ -47,7 +48,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _chartStream = _habitRepository.watchDailyProgress(widget.habitId);
+    _chartStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
   }
 
   Future<void> _showConfirmationDialog() async {
@@ -312,7 +313,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     Stream<Map<String,num>> currentStream;
 
     if (_selectedPeriod == 'Daily') {
-      currentStream = _habitRepository.watchDailyProgress(widget.habitId);
+      currentStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
     }
     else if (_selectedPeriod == 'Weekly') {
 
@@ -398,7 +399,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       Text(
                         progress.toInt().toString(),
                         style: TextStyle(
-                          fontSize: 10, 
+                          fontSize: 14, 
                           fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                           color: isToday ? primaryColor : textColorLight
                         ),
