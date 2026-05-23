@@ -46,6 +46,7 @@ class Habit {
     required this.goalReached,
     required this.streak,
     required this.highestStreak,
+    required this.daysCompleted,
     required this.isDone,
     required this.createdAt,
     this.lastEntryAt,
@@ -63,6 +64,7 @@ class Habit {
   final bool goalReached;
   final int streak;
   final int highestStreak;
+  final int daysCompleted;
   final bool isDone;
   final DateTime? createdAt;
   final DateTime? lastEntryAt;
@@ -80,6 +82,7 @@ class Habit {
     bool? goalReached,
     int? streak,
     int? highestStreak,
+    int? daysCompleted,
     bool? isDone,
     DateTime? createdAt,
     DateTime? lastEntryAt,
@@ -97,6 +100,7 @@ class Habit {
       goalReached: goalReached ?? this.goalReached,
       streak: streak ?? this.streak,
       highestStreak: highestStreak ?? this.highestStreak,
+      daysCompleted: daysCompleted ?? this.daysCompleted,
       isDone: isDone ?? this.isDone,
       createdAt: createdAt ?? this.createdAt,
       lastEntryAt: lastEntryAt ?? this.lastEntryAt,
@@ -117,6 +121,7 @@ class Habit {
       'goal_reached': goalReached,
       'streak': streak,
       'highest_streak': highestStreak,
+      'days_completed': daysCompleted,
       'is_done': isDone,
       'created_at': createdAt == null
           ? FieldValue.serverTimestamp()
@@ -144,6 +149,7 @@ class Habit {
       goalReached: map['goal_reached'] as bool? ?? false,
       streak: (map['streak'] as num?)?.toInt() ?? 0,
       highestStreak: (map['highest_streak'] as num?)?.toInt() ?? 0,
+      daysCompleted: (map['days_completed'] as num?)?.toInt() ?? 0,
       isDone: map['is_done'] as bool? ?? false,
       createdAt: createdAt is Timestamp ? createdAt.toDate() : null,
       lastEntryAt: lastEntryAt is Timestamp ? lastEntryAt.toDate() : null,

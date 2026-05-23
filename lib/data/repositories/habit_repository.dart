@@ -107,6 +107,7 @@ class HabitRepository {
 
     int highestStreak = 0;
     int currentRun = 0;
+    int daysCompleted = 0;
     final sortedDays = dailyTotals.keys.toList()
       ..sort((first, second) => first.compareTo(second));
 
@@ -121,7 +122,7 @@ class HabitRepository {
         } else {
           currentRun = 1;
         }
-
+        daysCompleted++;
         if (currentRun > highestStreak) {
           highestStreak = currentRun;
         }
@@ -143,6 +144,7 @@ class HabitRepository {
         'goal_reached': isGoalReachedToday,
         'streak': streak,
         'highest_streak': highestStreak,
+        'days_completed': daysCompleted,
         'last_entry_at': FieldValue.serverTimestamp(),
       };
 

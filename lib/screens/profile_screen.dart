@@ -217,6 +217,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 final habits = snapshot.data ?? const <Habit>[];
 
+                // Sort by days completed descending so most active habits appear first
+                habits.sort((a, b) => (b.daysCompleted).compareTo(a.daysCompleted));
+
                 if (habits.isEmpty) {
                   return Container(
                     width: double.infinity,

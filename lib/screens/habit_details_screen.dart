@@ -44,6 +44,15 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   void initState() {
     super.initState();
     _chartStream = _habitService.watchDailyProgress(widget.habitId);
+
+    // Recalculate stats once when opening the habit details page to ensure
+    // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _habitService.recalculateHabitStats(widget.habitId).catchError((e, st) {
+        print('recalculateHabitStats (onOpen) ERROR for ${widget.habitId}: $e');
+        print(st);
+      });
+    });
   }
 
   Future<void> _showConfirmationDialog(bool isCurrentlyDone) async {
@@ -120,6 +129,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         int currentProgress = widget.progress;
         int currentStreak = widget.streak;
         int currentHighestStreak = 0;
+        int currentDaysCompleted = 0;
         bool isDone = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
@@ -127,6 +137,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
           currentProgress = (data['progress'] as num?)?.toInt() ?? 0;
           currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
           currentHighestStreak = (data['highest_streak'] as num?)?.toInt() ?? 0;
+          currentDaysCompleted = (data['days_completed'] as num?)?.toInt() ?? 0;
           isDone = data['is_done'] as bool? ?? false;
         }
 
@@ -214,9 +225,12 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak days', large: true),
+                Row(
+                  children: [
+                    Expanded(child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak days')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildStatCard("DAYS COMPLETED", '$currentDaysCompleted')),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 _buildChartSection(),

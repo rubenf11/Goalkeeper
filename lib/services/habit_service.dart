@@ -36,6 +36,7 @@ class HabitService {
         goalReached: false,
         streak: 0,
         highestStreak: 0,
+        daysCompleted: 0,
         isDone: false,
         createdAt: null,
       );
