@@ -107,7 +107,8 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           progress: createdHabit.progress,
           unit: createdHabit.unit,
           streak: createdHabit.streak,
-          created_at: createdAt,
+              created_at: createdAt,
+              frequency: createdHabit.frequency,
         ),
       ),
     );

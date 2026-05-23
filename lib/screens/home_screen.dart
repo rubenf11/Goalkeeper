@@ -311,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 created_at: Timestamp.fromDate(
                                   habit.createdAt ?? DateTime.now(),
                                 ),
+                                frequency: habit.frequency,
                               ),
                             ),
                           );

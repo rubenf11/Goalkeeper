@@ -60,94 +60,144 @@ class HabitRepository {
     if (!habitSnap.exists) return;
 
     final habit = Habit.fromMap(habitSnap.data() as Map<String, dynamic>, id: habitSnap.id);
-    
-    // Fetch all entries
+
+    // Fetch all entries ordered by timestamp
     final entriesSnap = await habitRef.collection('entries').orderBy('timestamp', descending: true).get();
-    
-    final Map<DateTime, int> dailyTotals = {};
-    final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
 
-    for (var doc in entriesSnap.docs) {
-      final data = doc.data();
-
-      final timestamp = data['timestamp'] as Timestamp?;
-
-      final date = timestamp?.toDate() ?? now;
-
-      final dayKey = DateTime(date.year, date.month, date.day);
-      final amount = (data['amount'] as num?)?.toInt() ?? 0;
-
-      dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + amount;
+    // Helper to compute the period start for a given date depending on frequency
+    DateTime periodStartFor(DateTime dt, Frequency freq) {
+      switch (freq) {
+        case Frequency.daily:
+          return DateTime(dt.year, dt.month, dt.day);
+        case Frequency.weekly:
+          // Monday as start of week
+          final int weekday = dt.weekday; // Monday=1
+          final DateTime monday = DateTime(dt.year, dt.month, dt.day).subtract(Duration(days: weekday - 1));
+          return DateTime(monday.year, monday.month, monday.day);
+        case Frequency.monthly:
+          return DateTime(dt.year, dt.month, 1);
+        case Frequency.yearly:
+          return DateTime(dt.year, 1, 1);
+      }
     }
 
-    // 1. Calculate Today's Progress
-    final int todayProgress = dailyTotals[today] ?? 0;
-    final bool isGoalReachedToday = todayProgress >= habit.goal;
+    // Build totals per period
+    final Map<DateTime, int> periodTotals = {};
+    final DateTime now = DateTime.now();
+    for (var doc in entriesSnap.docs) {
+      final data = doc.data();
+      final timestamp = data['timestamp'] as Timestamp?;
+      final date = timestamp?.toDate() ?? now;
+      final amount = (data['amount'] as num?)?.toInt() ?? 0;
 
-    // 2. Calculate Streak
+      final DateTime key = periodStartFor(date, habit.frequency);
+      periodTotals[key] = (periodTotals[key] ?? 0) + amount;
+    }
+
+    // Current period
+    final DateTime currentPeriod = periodStartFor(now, habit.frequency);
+    final int currentProgress = periodTotals[currentPeriod] ?? 0;
+    final bool currentMet = currentProgress >= habit.goal;
+
+    // Streak calculation: count consecutive previous periods that met the goal
     int streak = 0;
-    DateTime checkDate = today;
-
-    // If today hasn't reached the goal, the streak might still be alive from yesterday
-    if (!isGoalReachedToday) {
-      checkDate = today.subtract(const Duration(days: 1));
+    DateTime checkPeriod = currentPeriod;
+    if (!currentMet) {
+      // move to previous period
+      switch (habit.frequency) {
+        case Frequency.daily:
+          checkPeriod = checkPeriod.subtract(const Duration(days: 1));
+          break;
+        case Frequency.weekly:
+          checkPeriod = checkPeriod.subtract(const Duration(days: 7));
+          break;
+        case Frequency.monthly:
+          checkPeriod = DateTime(checkPeriod.year, checkPeriod.month - 1, 1);
+          break;
+        case Frequency.yearly:
+          checkPeriod = DateTime(checkPeriod.year - 1, 1, 1);
+          break;
+      }
     }
 
     while (true) {
-      final int dayTotal = dailyTotals[checkDate] ?? 0;
-      if (dayTotal >= habit.goal) {
+      final int tot = periodTotals[checkPeriod] ?? 0;
+      if (tot >= habit.goal) {
         streak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
+        switch (habit.frequency) {
+          case Frequency.daily:
+            checkPeriod = checkPeriod.subtract(const Duration(days: 1));
+            break;
+          case Frequency.weekly:
+            checkPeriod = checkPeriod.subtract(const Duration(days: 7));
+            break;
+          case Frequency.monthly:
+            checkPeriod = DateTime(checkPeriod.year, checkPeriod.month - 1, 1);
+            break;
+          case Frequency.yearly:
+            checkPeriod = DateTime(checkPeriod.year - 1, 1, 1);
+            break;
+        }
       } else {
-        // Streak broken
         break;
       }
     }
 
+    // Highest streak and daysCompleted across all periods
     int highestStreak = 0;
     int currentRun = 0;
     int daysCompleted = 0;
-    final sortedDays = dailyTotals.keys.toList()
-      ..sort((first, second) => first.compareTo(second));
+    final sortedPeriods = periodTotals.keys.toList()..sort((a, b) => a.compareTo(b));
 
-    DateTime? previousDay;
-    for (final day in sortedDays) {
-      final int dayTotal = dailyTotals[day] ?? 0;
-      final bool metGoal = dayTotal >= habit.goal;
+    bool isConsecutive(DateTime prev, DateTime curr, Frequency freq) {
+      switch (freq) {
+        case Frequency.daily:
+          return curr.difference(prev).inDays == 1;
+        case Frequency.weekly:
+          return curr.difference(prev).inDays == 7;
+        case Frequency.monthly:
+          return (curr.year == prev.year && curr.month == prev.month + 1) || (curr.year == prev.year + 1 && prev.month == 12 && curr.month == 1);
+        case Frequency.yearly:
+          return curr.year == prev.year + 1;
+      }
+    }
 
-      if (metGoal) {
-        if (previousDay != null && day.difference(previousDay).inDays == 1) {
+    DateTime? prev;
+    for (final p in sortedPeriods) {
+      final int tot = periodTotals[p] ?? 0;
+      final bool met = tot >= habit.goal;
+      if (met) {
+        daysCompleted++;
+        if (prev != null && isConsecutive(prev, p, habit.frequency)) {
           currentRun++;
         } else {
           currentRun = 1;
         }
-        daysCompleted++;
-        if (currentRun > highestStreak) {
-          highestStreak = currentRun;
-        }
+        if (currentRun > highestStreak) highestStreak = currentRun;
       } else {
         currentRun = 0;
       }
-
-      previousDay = day;
+      prev = p;
     }
-
-    // Special case: if today met the goal, it's counted. 
-    // The loop above already handles it if we start from today and it's met.
 
     highestStreak = highestStreak < streak ? streak : highestStreak;
 
     try {
-        final updateData = {
-        'progress': todayProgress,
-        'goal_reached': isGoalReachedToday,
+      print('recalculateHabitStats: habitId=$habitId');
+      print('periodTotals keys=${periodTotals.keys.toList()}');
+      print('currentProgress=$currentProgress, currentMet=$currentMet');
+      print('computed streak=$streak, computed highestStreak=$highestStreak, habit.highestStreak=${habit.highestStreak}, daysCompleted=$daysCompleted');
+
+      final updateData = {
+        'progress': currentProgress,
+        'goal_reached': currentMet,
         'streak': streak,
         'highest_streak': highestStreak,
         'days_completed': daysCompleted,
         'last_entry_at': FieldValue.serverTimestamp(),
       };
 
+      print('recalculateHabitStats updateData=$updateData');
       await habitRef.update(updateData);
     } catch (e, st) {
       print('recalculateHabitStats ERROR for $habitId: $e');

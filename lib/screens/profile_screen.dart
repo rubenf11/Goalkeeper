@@ -263,6 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               created_at: Timestamp.fromDate(
                                 habit.createdAt ?? DateTime.now(),
                               ),
+                              frequency: habit.frequency,
                             ),
                           ),
                         );

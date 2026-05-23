@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../data/models/moment_photo.dart';
+import '../data/models/habit.dart';
 import 'add_entry_screen.dart';
 import '../services/habit_service.dart';
 import '../services/moment_service.dart';
@@ -13,6 +14,7 @@ class HabitDetailsScreen extends StatefulWidget {
   final String unit;
   final int streak;
   final Timestamp created_at;
+  final Frequency frequency;
 
   const HabitDetailsScreen({
     super.key,
@@ -23,6 +25,7 @@ class HabitDetailsScreen extends StatefulWidget {
     required this.unit,
     required this.streak,
     required this.created_at,
+    required this.frequency,
   });
 
   @override
@@ -130,6 +133,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         int currentStreak = widget.streak;
         int currentHighestStreak = 0;
         int currentDaysCompleted = 0;
+        String periodSingular;
+        String periodPlural;
         bool isDone = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
@@ -147,6 +152,33 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         DateTime date = widget.created_at.toDate();
         String habitDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
+        switch (widget.frequency) {
+          case Frequency.daily:
+            periodSingular = 'day';
+            periodPlural = 'days';
+            break;
+          case Frequency.weekly:
+            periodSingular = 'week';
+            periodPlural = 'weeks';
+            break;
+          case Frequency.monthly:
+            periodSingular = 'month';
+            periodPlural = 'months';
+            break;
+          case Frequency.yearly:
+            periodSingular = 'year';
+            periodPlural = 'years';
+            break;
+        }
+
+        final streakPeriodLabel = currentStreak == 1 ? periodSingular : periodPlural;
+        final highestStreakPeriodLabel =
+            currentHighestStreak == 1 ? periodSingular : periodPlural;
+        final completedPeriodLabel =
+            currentDaysCompleted == 1 ? periodSingular : periodPlural;
+        final completedTitle =
+            '${completedPeriodLabel[0].toUpperCase()}${completedPeriodLabel.substring(1)} Completed';
+
         return Scaffold(
           backgroundColor: backgroundColor,
           appBar: AppBar(
@@ -157,10 +189,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               icon: Icon(Icons.arrow_back_ios_new, color: textColorDark, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Text(
-              widget.name,
-              style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+            title: Text(widget.name, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
             actions: [
               PopupMenuButton(
                 icon: Icon(Icons.more_vert, color: textColorDark),
@@ -219,7 +248,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 const SizedBox(height: 32),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard("STREAK", '$currentStreak days')),
+                    Expanded(child: _buildStatCard("STREAK", '$currentStreak $streakPeriodLabel')),
                     const SizedBox(width: 16),
                     Expanded(child: _buildStatCard("Created at", habitDate)),
                   ],
@@ -227,9 +256,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak days')),
+                    Expanded(child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak $highestStreakPeriodLabel')),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildStatCard("DAYS COMPLETED", '$currentDaysCompleted')),
+                    Expanded(child: _buildStatCard(completedTitle, '$currentDaysCompleted')),
                   ],
                 ),
                 const SizedBox(height: 24),
