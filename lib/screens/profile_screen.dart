@@ -1,7 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../data/models/habit.dart';
 import '../data/models/moment_photo.dart';
+import 'home_screen.dart';
+import 'habit_details_screen.dart';
 import '../services/moment_service.dart';
+import '../services/habit_service.dart';
+import '../widgets/habit_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final Color textColorLight = const Color(0xFF64748B);
   final Color accentGreen = const Color(0xFF10B981);
   final MomentService _momentService = MomentService();
+  final HabitService _habitService = HabitService();
 
 
   @override
@@ -73,7 +80,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Profile Photo
             Center(
               child: Stack(
-                alignment: Alignment.bottomRight,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(4),
@@ -108,7 +114,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Gallery', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColorDark),),
-                Text('View all', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600)),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HomeScreen(),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'View all',
+                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -183,6 +202,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text('My Habits', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColorDark)),
+            ),
+            const SizedBox(height: 16),
+
+            StreamBuilder<List<Habit>>(
+              stream: _habitService.watchCurrentUserHabits(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                final habits = snapshot.data ?? const <Habit>[];
+
+                if (habits.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Text(
+                      'No habits yet',
+                      style: TextStyle(color: textColorLight),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: habits.length,
+                  itemBuilder: (context, index) {
+                    final habit = habits[index];
+                    return HabitCard(
+                      category: habit.category,
+                      name: habit.name,
+                      goal: habit.goal,
+                      progress: habit.progress,
+                      unit: habit.unit,
+                      streak: habit.streak,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HabitDetailsScreen(
+                              habitId: habit.id,
+                              name: habit.name,
+                              goal: habit.goal,
+                              progress: habit.progress,
+                              unit: habit.unit,
+                              streak: habit.streak,
+                              created_at: Timestamp.fromDate(
+                                habit.createdAt ?? DateTime.now(),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
             ),
             
           ],

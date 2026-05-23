@@ -46,7 +46,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     _chartStream = _habitService.watchDailyProgress(widget.habitId);
   }
 
-  Future<void> _showConfirmationDialog() async {
+  Future<void> _showConfirmationDialog(bool isCurrentlyDone) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -57,11 +57,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             borderRadius: BorderRadiusGeometry.circular(16),
           ),
           title: Text(
-            "Mark as Completed",
+            isCurrentlyDone ? "Continue Habit" : "Mark as Completed",
             style: TextStyle(color: textColorDark, fontWeight: FontWeight.bold),
           ),
           content: Text(
-            "Are you sure you want to mark this habit as completed?",
+            isCurrentlyDone
+                ? "Are you sure you want to continue this habit?"
+                : "Are you sure you want to mark this habit as completed?",
             style: TextStyle(color: textColorLight),
           ),
           actions: <Widget>[
@@ -83,13 +85,23 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 ),
               ),
               child: Text(
-                "Confirm",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                isCurrentlyDone ? "Continue" : "Confirm",
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
+                final error = await _habitService.setHabitCompletionStatus(
+                  habitId: widget.habitId,
+                  isDone: !isCurrentlyDone,
+                );
+
+                if (!mounted) return;
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Habit marked as completed!')),
+                  SnackBar(
+                    content: Text(error ?? 'Habit marked as completed!'),
+                    backgroundColor: error == null ? Colors.green : Colors.red,
+                  ),
                 );
               },
             ),
@@ -107,11 +119,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       builder: (context, snapshot) {
         int currentProgress = widget.progress;
         int currentStreak = widget.streak;
+        bool isDone = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           var data = snapshot.data!.data() as Map<String, dynamic>;
           currentProgress = (data['progress'] as num?)?.toInt() ?? 0;
           currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
+          isDone = data['is_done'] as bool? ?? false;
         }
 
         double progressPercentage = widget.goal > 0 ? currentProgress / widget.goal : 0;
@@ -156,7 +170,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     );
                   }
                   else if (choice == 'mark_completed') {
-                    _showConfirmationDialog();
+                    _showConfirmationDialog(isDone);
                   }
                 },
                 itemBuilder: (context) => [
@@ -170,13 +184,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'mark_completed',
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
-                        SizedBox(width: 12),
-                        Text("Mark as completed"),
+                        const Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+                        const SizedBox(width: 12),
+                        Text(isDone ? 'Continue Habit' : 'Mark as completed'),
                       ],
                     ),
                   ),

@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../data/models/habit.dart';
-import '../data/repositories/habit_repository.dart';
+import '../services/entry_service.dart';
+import '../services/habit_service.dart';
 
 class CreateEntryScreen extends StatefulWidget {
   const CreateEntryScreen({super.key});
@@ -18,7 +18,8 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
   final Color textColorDark = const Color(0xFF1E293B);
   final Color textColorLight = const Color(0xFF64748B);
 
-  final HabitRepository _habitRepository = HabitRepository();
+  final HabitService _habitService = HabitService();
+  final EntryService _entryService = EntryService();
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final TextEditingController _progressController = TextEditingController();
   
@@ -34,29 +35,18 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
   Future<void> _updateProgress() async {
     if (_selectedHabitId == null || _progressController.text.isEmpty || currentUser == null) return;
 
-    int increment = int.tryParse(_progressController.text) ?? 0;
+    final int increment = int.tryParse(_progressController.text) ?? 0;
     if (increment <= 0) return;
 
     try {
-      final habitRef = FirebaseFirestore.instance.collection('habits').doc(_selectedHabitId);
+      final error = await _entryService.addEntrytoHabit(
+        habitId: _selectedHabitId!,
+        amount: increment.toDouble(),
+      );
 
-      // Create a batch to ensure both operations succeed or fail together
-      WriteBatch batch = FirebaseFirestore.instance.batch();
-
-      // 1. Update the habit progress
-      batch.update(habitRef, {
-        'progress': FieldValue.increment(increment),
-      });
-
-      // 2. Add an entry to the subcollection
-      DocumentReference entryRef = habitRef.collection('entries').doc();
-      batch.set(entryRef, {
-        'amount': increment,
-        'timestamp': FieldValue.serverTimestamp(),
-        'user_id': currentUser!.uid,
-      });
-
-      await batch.commit();
+      if (error != null) {
+        throw Exception(error);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +97,7 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
                   ),
                   const SizedBox(height: 16),
                   StreamBuilder<List<Habit>>(
-                    stream: _habitRepository.watchCurrentUserHabits(),
+                    stream: _habitService.watchCurrentUserHabits(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return Text('Error: ${snapshot.error}');

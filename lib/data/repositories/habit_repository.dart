@@ -113,7 +113,21 @@ class HabitRepository {
       'goal_reached': isGoalReachedToday,
       'streak': streak,
       'last_entry_at': FieldValue.serverTimestamp(),
-      'is_done': isGoalReachedToday,
+    });
+  }
+
+  Future<void> markHabitAsCompleted(String habitId) async {
+    await _firestore.collection('habits').doc(habitId).update({
+      'is_done': true,
+    });
+  }
+
+  Future<void> setHabitCompletionStatus({
+    required String habitId,
+    required bool isDone,
+  }) async {
+    await _firestore.collection('habits').doc(habitId).update({
+      'is_done': isDone,
     });
   }
 
@@ -127,6 +141,35 @@ class HabitRepository {
     return _firestore
         .collection('habits')
         .where('user_id', isEqualTo: currentUser.uid)
+        .snapshots()
+        .map((snapshot) {
+          final habits = snapshot.docs
+              .map((doc) => Habit.fromMap(doc.data(), id: doc.id))
+              .toList();
+
+          habits.sort(
+            (first, second) =>
+                (second.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                    .compareTo(
+                      first.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+                    ),
+          );
+
+          return habits;
+        });
+  }
+
+  Stream<List<Habit>> watchCurrentUserActiveHabits() {
+    final currentUser = _auth.currentUser;
+
+    if (currentUser == null) {
+      return Stream<List<Habit>>.value(const <Habit>[]);
+    }
+
+    return _firestore
+        .collection('habits')
+        .where('user_id', isEqualTo: currentUser.uid)
+        .where('is_done', isEqualTo: false)
         .snapshots()
         .map((snapshot) {
           final habits = snapshot.docs

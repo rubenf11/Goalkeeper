@@ -50,24 +50,6 @@ class HabitService {
     }
   }
 
-  Future<void> addEntryAndUpdateHabit(String habitId, double amountEntered) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final habitDoc = FirebaseFirestore.instance
-        .collection('habits')
-        .doc(habitId);
-
-    // 1. Add the entry
-    await habitDoc.collection('entries').add({
-      'amount': amountEntered,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    // 2. Recalculate everything for this specific habit
-    await recalculateHabitStats(habitId);
-  }
-
   Future<void> recalculateHabitStats(String habitId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -140,7 +122,26 @@ class HabitService {
     return _repository.watchCurrentUserHabits();
   }
 
+  Stream<List<Habit>> watchCurrentUserActiveHabits() {
+    return _repository.watchCurrentUserActiveHabits();
+  }
+
   Stream<Map<String, num>> watchDailyProgress(String habitId) {
     return _repository.watchDailyProgress(habitId);
+  }
+
+  Future<String?> setHabitCompletionStatus({
+    required String habitId,
+    required bool isDone,
+  }) async {
+    try {
+      await _repository.setHabitCompletionStatus(
+        habitId: habitId,
+        isDone: isDone,
+      );
+      return null;
+    } catch (e) {
+      return 'Error updating habit completion status: $e';
+    }
   }
 }
