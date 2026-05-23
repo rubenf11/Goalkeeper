@@ -8,12 +8,14 @@ class EntryRepository {
   Future<void> saveEntry({
     required String habitId,
     required String entryId,
+    required String userId,
     required double value,
     required Timestamp timestamp,
     String? imageUrl,
     String? caption,
   }) async {
     final Map<String, dynamic> payload = {
+      'user_id': userId,
       'value': value,
       'timestamp': timestamp,
     };

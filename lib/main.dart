@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'services/entry_service.dart';
 import 'services/habit_service.dart';
+import 'services/moment_service.dart';
 import 'config/supabase_config.dart';
 
 void main() async {
@@ -26,6 +27,7 @@ void main() async {
       providers: [
         Provider<HabitService>(create: (_) => HabitService()),
         Provider<EntryService>(create: (_) => EntryService()),
+        Provider<MomentService>(create: (_) => MomentService()),
       ],
       child: const MyApp(),
     ),
