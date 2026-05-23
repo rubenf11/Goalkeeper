@@ -77,14 +77,20 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       return;
     }
 
+    if (entryValue <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entry amount must be greater than zero')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     String? errorMsg = await _entryService.addEntrytoHabit(
       habitId: widget.habitId,
-      value: entryValue,
-      currentProgress: widget.currentProgress,
+      amount: entryValue,
       imageFile: _selectedImage,
       caption: _captionController.text.trim().isEmpty ? null : _captionController.text.trim(),
     );

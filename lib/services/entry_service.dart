@@ -11,8 +11,7 @@ class EntryService {
 
   Future<String?> addEntrytoHabit({
     required String habitId,
-    required double value,
-    required int currentProgress,
+    required double amount,
     File? imageFile,
     String? caption,
   }) async {
@@ -35,16 +34,10 @@ class EntryService {
         habitId: habitId,
         entryId: entryId,
         userId: userId,
-        value: value,
+        amount: amount,
         timestamp: now,
         imageUrl: imageUrl,
         caption: caption,
-      );
-
-      int updatedProgress = currentProgress + value.toInt();
-      await _repository.updateHabitProgress(
-        habitId: habitId,
-        newProgress: updatedProgress,
       );
 
       return null;

@@ -9,14 +9,14 @@ class EntryRepository {
     required String habitId,
     required String entryId,
     required String userId,
-    required double value,
+    required double amount,
     required Timestamp timestamp,
     String? imageUrl,
     String? caption,
   }) async {
     final Map<String, dynamic> payload = {
       'user_id': userId,
-      'value': value,
+      'amount': amount,
       'timestamp': timestamp,
     };
 

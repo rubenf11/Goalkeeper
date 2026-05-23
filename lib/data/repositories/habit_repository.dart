@@ -46,7 +46,7 @@ class HabitRepository {
 
     // 1. Add the entry to the subcollection
     await habitRef.collection('entries').add({
-      'value': amount,
+      'amount': amount,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -76,7 +76,7 @@ class HabitRepository {
       final date = timestamp?.toDate() ?? now;
 
       final dayKey = DateTime(date.year, date.month, date.day);
-      final amount = (data['value'] as num?)?.toInt() ?? 0;
+      final amount = (data['amount'] as num?)?.toInt() ?? 0;
 
       dailyTotals[dayKey] = (dailyTotals[dayKey] ?? 0) + amount;
     }
@@ -165,7 +165,7 @@ class HabitRepository {
 
           final date = timestamp.toDate();
           final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-          final amount = (data['value'] ?? 0);
+          final amount = (data['amount'] ?? 0);
 
           progressMap[dateString] = (progressMap[dateString] ?? 0) + amount;
         } 
