@@ -85,6 +85,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       habitId: widget.habitId,
       value: entryValue,
       currentProgress: widget.currentProgress,
+      imageFile: _selectedImage,
+      caption: _captionController.text.trim().isEmpty ? null : _captionController.text.trim(),
     );
 
     if (!mounted) return;
