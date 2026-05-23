@@ -105,15 +105,53 @@ class HabitRepository {
       }
     }
 
+    int highestStreak = 0;
+    int currentRun = 0;
+    final sortedDays = dailyTotals.keys.toList()
+      ..sort((first, second) => first.compareTo(second));
+
+    DateTime? previousDay;
+    for (final day in sortedDays) {
+      final int dayTotal = dailyTotals[day] ?? 0;
+      final bool metGoal = dayTotal >= habit.goal;
+
+      if (metGoal) {
+        if (previousDay != null && day.difference(previousDay).inDays == 1) {
+          currentRun++;
+        } else {
+          currentRun = 1;
+        }
+
+        if (currentRun > highestStreak) {
+          highestStreak = currentRun;
+        }
+      } else {
+        currentRun = 0;
+      }
+
+      previousDay = day;
+    }
+
     // Special case: if today met the goal, it's counted. 
     // The loop above already handles it if we start from today and it's met.
 
-    await habitRef.update({
-      'progress': todayProgress,
-      'goal_reached': isGoalReachedToday,
-      'streak': streak,
-      'last_entry_at': FieldValue.serverTimestamp(),
-    });
+    highestStreak = highestStreak < streak ? streak : highestStreak;
+
+    try {
+        final updateData = {
+        'progress': todayProgress,
+        'goal_reached': isGoalReachedToday,
+        'streak': streak,
+        'highest_streak': highestStreak,
+        'last_entry_at': FieldValue.serverTimestamp(),
+      };
+
+      await habitRef.update(updateData);
+    } catch (e, st) {
+      print('recalculateHabitStats ERROR for $habitId: $e');
+      print(st);
+      rethrow;
+    }
   }
 
   Future<void> markHabitAsCompleted(String habitId) async {

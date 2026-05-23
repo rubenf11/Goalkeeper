@@ -57,29 +57,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Good evening';
   }
 
-  Future<void> refreshAllHabits() async {final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+  Future<void> refreshAllHabits() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  try {
-    // Query habits where user_id matches the current user
-    print("DEBUG: Fetching habits for user: ${user.uid}");
-    final snapshot = await FirebaseFirestore.instance
-        .collection('habits')
-        .where('user_id', isEqualTo: user.uid)
-        .get();
+    try {
+      // Query habits where user_id matches the current user
+      print("DEBUG: Fetching habits for user: ${user.uid}");
+      final snapshot = await FirebaseFirestore.instance
+          .collection('habits')
+          .where('user_id', isEqualTo: user.uid)
+          .get();
 
 
-    print("DEBUG: Found ${snapshot.docs.length} habits to recalculate");
+      print("DEBUG: Found ${snapshot.docs.length} habits to recalculate");
 
-    final habitService = HabitService(); // Initialize your service
+      final habitService = HabitService(); // Initialize your service
 
-    for (var doc in snapshot.docs) {
-      await habitService.recalculateHabitStats(doc.id);
+      for (var doc in snapshot.docs) {
+        await habitService.recalculateHabitStats(doc.id);
+      }
+      print("DEBUG: Refresh complete");
+    } catch (e) {
+      debugPrint("Error refreshing habits: $e");
     }
-    print("DEBUG: Refresh complete");
-  } catch (e) {
-    debugPrint("Error refreshing habits: $e");
-  }
   }
 
   @override

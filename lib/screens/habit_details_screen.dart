@@ -119,12 +119,14 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       builder: (context, snapshot) {
         int currentProgress = widget.progress;
         int currentStreak = widget.streak;
+        int currentHighestStreak = 0;
         bool isDone = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           var data = snapshot.data!.data() as Map<String, dynamic>;
           currentProgress = (data['progress'] as num?)?.toInt() ?? 0;
           currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
+          currentHighestStreak = (data['highest_streak'] as num?)?.toInt() ?? 0;
           isDone = data['is_done'] as bool? ?? false;
         }
 
@@ -211,6 +213,11 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     Expanded(child: _buildStatCard("Created at", habitDate)),
                   ],
                 ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak days', large: true),
+                ),
                 const SizedBox(height: 24),
                 _buildChartSection(),
 
@@ -252,7 +259,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value) {
+  Widget _buildStatCard(String title, String value, {bool large = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
@@ -264,7 +271,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         children: [
           Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColorDark)),
+          Text(value, style: TextStyle(fontSize: large ? 20 : 17, fontWeight: FontWeight.bold, color: textColorDark)),
         ],
       ),
     );
