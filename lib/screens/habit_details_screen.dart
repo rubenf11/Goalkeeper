@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:goalkeeper/widgets/image_source_bottom_sheet.dart';
-import '../data/repositories/habit_repository.dart';
 import '../services/image_picker_helper.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'add_entry_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/habit_service.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   final String habitId;
@@ -43,6 +43,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final ImagePickerHelper _imageHelper = ImagePickerHelper();
 
   String _selectedPeriod = 'Daily';
+  String _selectedChartMode = 'Sum';
   late final Stream<Map<String, num>> _chartStream;
 
   @override
@@ -234,10 +235,53 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                _buildChartSection(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Analytics",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColorDark,
+                      ),
+                    ),
 
+                    if (_selectedPeriod != "Daily")...[
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment<String>(
+                            value: 'Sum',
+                            label: Text('Sum'),
+                            icon: Icon(Icons.functions, size: 16),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'Average',
+                            label: Text('Average'),
+                            icon: Icon(Icons.analytics, size: 16),
+                          ),
+                        ],
+                        selected: {_selectedChartMode},
+                        onSelectionChanged: (Set<String> newSelection) {
+                          setState(() {
+                            _selectedChartMode = newSelection.first;
+                          });
+                        },
+                        style: SegmentedButton.styleFrom(
+                          selectedBackgroundColor: primaryColor,
+                          selectedForegroundColor: Colors.white,
+                          foregroundColor: textColorLight,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
                 const SizedBox(height: 24),
-                _buildDailyMomentsSection(),
+                _buildChartPeriodSelector(),
+                const SizedBox(height: 24),
+                _buildActiveChart(widget.habitId, _selectedChartMode),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -435,6 +479,276 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     ],
                   );
                 }).toList(),    
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartPeriodSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: ['Daily', 'Weekly', 'Monthly'].map((period) {
+          final isSelected = _selectedPeriod == period;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedPeriod = period;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? cardColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : [],
+                ),
+                child: Text(
+                  period,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? primaryColor : textColorLight,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildActiveChart(String habitId, String mode) {
+    switch (_selectedPeriod) {
+      case 'Weekly':
+        return _buildLineChartSection(
+          title: "Weekly Analytics",
+          stream: context.read<HabitService>().watchWeeklyProgress(habitId, mode: mode),
+          periodType: "Weekly",
+          mode: _selectedChartMode,
+        );
+      case 'Monthly':
+        return _buildLineChartSection(
+          title: "Monthly Analytics",
+          stream: context.read<HabitService>().watchMonthlyProgress(habitId, mode: mode),
+          periodType: "Monthly",
+          mode: _selectedChartMode,
+        );
+      case 'Daily':
+      default:
+        return _buildLineChartSection(
+          title: "Daily Analytics",
+          stream: context.read<HabitService>().watchDailyProgress(habitId),
+          periodType: "Daily",
+          mode: _selectedChartMode,
+        );
+    }
+  }
+
+  Widget _buildLineChartSection({
+    required String title,
+    required Stream<Map<String, num>> stream,
+    required String periodType,
+    required String mode,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          periodType == 'Daily' ? title : '$title ($mode)',
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 16),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          height: 220,
+          padding: const EdgeInsets.only(right: 20, top: 10),
+          child: StreamBuilder<Map<String, num>>(
+            stream: stream,
+            builder: (context, snapshot) {
+              final progressMap = snapshot.data ?? {};
+              final DateTime now = DateTime.now();
+              
+              List<String> sortedKeys = [];
+              List<FlSpot> spots = [];
+
+              if (periodType == 'Daily') {
+                for (int i = 0; i < 7; i++) {
+                  final date = now.subtract(Duration(days: 6 - i));
+                  final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                  sortedKeys.add(dateStr);
+                  spots.add(FlSpot(i.toDouble(), (progressMap[dateStr] ?? 0).toDouble()));
+                }
+              } else {
+                sortedKeys = progressMap.keys.toList()..sort();
+                for (int i = 0; i < sortedKeys.length; i++) {
+                  spots.add(FlSpot(i.toDouble(), progressMap[sortedKeys[i]]!.toDouble()));
+                }
+              }
+
+              if (sortedKeys.isEmpty) return const Center(child: Text("Sem dados suficientes"));
+
+              final double maxXD = sortedKeys.length > 1 ? (sortedKeys.length - 1).toDouble() : 1.0;
+
+              double highestValue = 0;
+              for (var spot in spots) {
+                if (spot.y > highestValue) highestValue = spot.y;
+              }
+              
+              double targetMaxY = highestValue;
+
+              if (targetMaxY == 0) targetMaxY = 10; 
+
+              double yInterval = mode == 'Average' ? (targetMaxY / 4) : (targetMaxY / 4).ceilToDouble();
+              if (yInterval == 0) yInterval = 1;
+
+              return LineChart(
+                LineChartData(
+                  minY: 0,
+                  minX: 0,
+                  maxY: targetMaxY + (targetMaxY * 0.1),
+                  maxX: maxXD,
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (spot) => primaryColor,
+                      getTooltipItems: (touchedSpots) => touchedSpots.map((s) => LineTooltipItem(
+                        mode == 'Average' 
+                            ? '${s.y.toStringAsFixed(1)}' 
+                            : '${s.y.toInt()}',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      )).toList(),
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(color: backgroundColor, strokeWidth: 1),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: yInterval,
+                        reservedSize: 35,
+                        getTitlesWidget: (value, meta) {
+                          if (value == targetMaxY + (targetMaxY * 0.1) || (mode != 'Average' && value % 1 != 0)) {
+                            return const SizedBox();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Text(
+                              value.toInt().toString(),
+                              style: TextStyle(
+                                color: textColorLight, 
+                                fontSize: 10, 
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        reservedSize: 35,
+                        getTitlesWidget: (value, meta) {
+                          if (value % 1 != 0) return const SizedBox();
+                          final index = value.toInt();
+                          if (index < 0 || index >= sortedKeys.length) return const SizedBox();
+                          
+                          String label = sortedKeys[index];
+                          bool isToday = false;
+                          try {
+                            if (periodType == 'Monthly') {
+                              final parts = label.split('-');
+                              final month = int.parse(parts[1]);
+                              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                              label = months[month - 1];
+                            } 
+                            else if (periodType == 'Weekly') {
+                              final parts = label.split('-');
+                              final startDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+                              final endDate = startDate.add(const Duration(days: 6));
+                              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                              label = startDate.month == endDate.month 
+                                  ? "${startDate.day}-${endDate.day} ${months[startDate.month-1]}"
+                                  : "${startDate.day} ${months[startDate.month-1]}-${endDate.day} ${months[endDate.month-1]}";
+                            }
+                            else {
+                              final parts = label.split('-');
+                              final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+                              const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                              label = weekdays[date.weekday - 1];
+                              isToday = date.day == now.day && date.month == now.month;
+                            }
+                          } catch (e) {
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 10.0),
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: isToday ? primaryColor : textColorLight,
+                                fontSize: periodType == 'Week' ? 9 : 11,
+                                fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: spots.length > 1,
+                      color: primaryColor,
+                      barWidth: 4,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.white,
+                          strokeWidth: 3,
+                          strokeColor: primaryColor,
+                        ),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [primaryColor.withOpacity(0.3), primaryColor.withOpacity(0.0)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),
