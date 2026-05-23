@@ -143,4 +143,12 @@ class HabitService {
   Stream<Map<String, num>> watchDailyProgress(String habitId) {
     return _repository.watchDailyProgress(habitId);
   }
+
+  Stream<Map<String, num>> watchWeeklyProgress(String habitId, {String mode = 'Sum'}) {
+    return _repository.watchWeeklyProgress(habitId, mode: mode);
+  }
+
+  Stream<Map<String, num>> watchMonthlyProgress(String habitId, {String mode = 'Sum'}) {
+    return _repository.watchMonthlyProgress(habitId, mode: mode);
+  }
 }
