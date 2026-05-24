@@ -100,5 +100,12 @@ class HabitService {
     } catch (e) {
       return 'Error updating habit completion status: $e';
     }
+    
+  Stream<Map<String, num>> watchWeeklyProgress(String habitId, {String mode = 'Sum'}) {
+    return _repository.watchWeeklyProgress(habitId, mode: mode);
+  }
+
+  Stream<Map<String, num>> watchMonthlyProgress(String habitId, {String mode = 'Sum'}) {
+    return _repository.watchMonthlyProgress(habitId, mode: mode);
   }
 }

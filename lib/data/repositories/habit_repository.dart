@@ -289,7 +289,7 @@ class HabitRepository {
       .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
       .snapshots()
       .map((snapshot) {
-        Map<String, num> progressMap = {};
+        Map<String, num> sumMap = {};
 
         for (var doc in snapshot.docs) {
           final data = doc.data();
@@ -300,9 +300,95 @@ class HabitRepository {
           final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
           final amount = (data['amount'] ?? 0);
 
-          progressMap[dateString] = (progressMap[dateString] ?? 0) + amount;
-        } 
-        return progressMap;
+          sumMap[dateString] = (sumMap[dateString] ?? 0) + amount;
+        }
+        return sumMap;
+      });
+  }
+
+  Stream<Map<String,num>> watchWeeklyProgress(String habitId, {String mode = 'Sum'}) {
+    final now = DateTime.now();
+
+    final sixWeeksAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 42));
+
+    return _firestore
+      .collection('habits')
+      .doc(habitId)
+      .collection('entries')
+      .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(sixWeeksAgo))
+      .snapshots()
+      .map((snapshot) {
+        Map<String, num> weeklyMap = {};
+
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (timestamp == null) continue;
+          final date = timestamp.toDate();
+
+          final monday = date.subtract(Duration(days: date.weekday - 1));
+          final weekLabel = "${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}";
+
+          final amount = (data['value'] ?? 0);
+          weeklyMap[weekLabel] = (weeklyMap[weekLabel] ?? 0) + amount;
+        }
+
+        if (mode == 'Average') {
+          Map<String, num> averageMap = {};
+          weeklyMap.forEach((key, sum) {
+            averageMap[key] = double.parse((sum / 7).toStringAsFixed(1));
+          });
+          return averageMap;
+        }
+        return weeklyMap;
+      });
+  }
+
+  Stream<Map<String,num>> watchMonthlyProgress(String habitId, {String mode = 'Sum'}) {
+    final now = DateTime.now();
+
+    final fourMonthsAgo = DateTime(now.year, now.month - 3, 1);
+
+    return _firestore
+      .collection('habits')
+      .doc(habitId)
+      .collection('entries')
+      .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(fourMonthsAgo))
+      .snapshots()
+      .map((snapshots) {
+        Map<String, num> sumMap = {};
+
+        for (var doc in snapshots.docs) {
+          final data = doc.data();
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (timestamp == null) continue;
+
+          final date = timestamp.toDate();
+
+          final monthLabel = "${date.year}-${date.month.toString().padLeft(2, '0')}";
+
+          final amount = (data['value'] ?? 0);
+          sumMap[monthLabel] = (sumMap[monthLabel] ?? 0) + amount;
+        }
+
+        if (mode == 'Average') {
+          Map<String, num> averageMap = {};
+          sumMap.forEach((key, sum) {
+            final parts = key.split('-');
+            if (parts.length == 2) {
+              final year = int.tryParse(parts[0]) ?? now.year;
+              final month = int.tryParse(parts[1]) ?? now.month;
+              
+              final daysInMonth = DateTime(year, month + 1, 0).day; 
+              
+              averageMap[key] = double.parse((sum / daysInMonth).toStringAsFixed(1));
+            } else {
+              averageMap[key] = double.parse((sum / 30).toStringAsFixed(1));
+            }
+          });
+          return averageMap;
+        }
+        return sumMap;
       });
   }
 
