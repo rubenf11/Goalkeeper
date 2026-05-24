@@ -15,18 +15,26 @@ class StorageRepository {
     }
   }
 
-  Future<String> uploadImage(File file, String path) async {
+  Future<String> uploadImage(
+    File file,
+    String path, {
+    String bucket = 'moments',
+  }) async {
     try {
       final SupabaseClient supabase = await _client();
 
-      // Upload file to 'moments' bucket
-      await supabase.storage.from('moments').upload(path, file);
+      await supabase.storage.from(bucket).upload(path, file);
 
-      // Get the public URL for the uploaded file
-      final String publicUrl = supabase.storage.from('moments').getPublicUrl(path);
+      final String publicUrl = supabase.storage.from(bucket).getPublicUrl(path);
       return publicUrl;
     } catch (e) {
       throw Exception('Failed to upload to Supabase: $e');
     }
+  }
+
+  Future<String> uploadProfileImage(File file, String userId) async {
+    final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final String path = 'profiles/$userId/$fileName';
+    return uploadImage(file, path);
   }
 }

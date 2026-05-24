@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final Color progressBgColor = const Color(0xFFEEF2F6);
   final Color completedCardColor = const Color(0xFF006B59);
 
-  final User? currentUser = FirebaseAuth.instance.currentUser;
+  User? get currentUser => FirebaseAuth.instance.currentUser;
   late final Stream<List<Habit>> _activeHabitsStream;
 
   final PageController _pageController = PageController();
@@ -85,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final User? user = currentUser;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -96,7 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(left: 16.0),
           child: CircleAvatar(
             backgroundColor: primaryColor.withOpacity(0.2),
-            child: Icon(Icons.person, color: primaryColor),
+            backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+            child: user?.photoURL == null ? Icon(Icons.person, color: primaryColor) : null,
           ),
         ),
 
@@ -127,201 +130,212 @@ class _HomeScreenState extends State<HomeScreen> {
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${getGreeting()}, ${getFirstName()}!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: textColorDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '"Focus on progress, not perfection. Every step counts."',
-              style: TextStyle(
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-                color: textColorLight,
-              ),
-            ),
-            const SizedBox(height: 32),
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: user == null
+              ? null
+              : FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+          builder: (context, userSnapshot) {
+            final userData = userSnapshot.data?.data();
+            final String displayName = userData?['name'] as String? ?? getFirstName();
 
-            // Daily progress container
-            Center(
-              child: StreamBuilder<List<Habit>>(
-                stream: _activeHabitsStream,
-                builder: (context, snapshot) {
-                  if(snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  }
-                  if(snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  final habits = snapshot.data ?? [];
-                  final activeHabits = habits.where((habit) => !habit.isDone).toList();
-                  final progressCards = <Widget>[
-                    if (activeHabits.any((habit) => habit.frequency == Frequency.daily))
-                      _buildProgressCard(
-                        title: "Daily Progress",
-                        habits: activeHabits,
-                        frequency: Frequency.daily,
-                        typeLabel: "daily",
-                      ),
-                    if (activeHabits.any((habit) => habit.frequency == Frequency.weekly))
-                      _buildProgressCard(
-                        title: "Weekly Progress",
-                        habits: activeHabits,
-                        frequency: Frequency.weekly,
-                        typeLabel: "weekly",
-                      ),
-                    if (activeHabits.any((habit) => habit.frequency == Frequency.monthly))
-                      _buildProgressCard(
-                        title: "Monthly Progress",
-                        habits: activeHabits,
-                        frequency: Frequency.monthly,
-                        typeLabel: "monthly",
-                      ),
-                    if (activeHabits.any((habit) => habit.frequency == Frequency.yearly))
-                    _buildProgressCard(
-                      title: "Yearly Progress",
-                      habits: activeHabits,
-                      frequency: Frequency.yearly,
-                      typeLabel: "yearly",
-                    ),
-                  ];
-
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (progressCards.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              'No active habits yet.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                color: textColorLight,
-                              ),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            height: 300,
-                            child: PageView(
-                              controller: _pageController,
-                              children: progressCards,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${getGreeting()}, $displayName!',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: textColorDark,
                             ),
                           ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            '"Focus on progress, not perfection. Every step counts."',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                              color: textColorLight,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Center(
+                  child: StreamBuilder<List<Habit>>(
+                    stream: _activeHabitsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'ACTIVE HABITS',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: textColorLight,
-                    letterSpacing: 1,
+                      final habits = snapshot.data ?? [];
+                      final activeHabits = habits.where((habit) => !habit.isDone).toList();
+                      final progressCards = <Widget>[
+                        if (activeHabits.any((habit) => habit.frequency == Frequency.daily))
+                          _buildProgressCard(
+                            title: 'Daily Progress',
+                            habits: activeHabits,
+                            frequency: Frequency.daily,
+                            typeLabel: 'daily',
+                          ),
+                        if (activeHabits.any((habit) => habit.frequency == Frequency.weekly))
+                          _buildProgressCard(
+                            title: 'Weekly Progress',
+                            habits: activeHabits,
+                            frequency: Frequency.weekly,
+                            typeLabel: 'weekly',
+                          ),
+                        if (activeHabits.any((habit) => habit.frequency == Frequency.monthly))
+                          _buildProgressCard(
+                            title: 'Monthly Progress',
+                            habits: activeHabits,
+                            frequency: Frequency.monthly,
+                            typeLabel: 'monthly',
+                          ),
+                        if (activeHabits.any((habit) => habit.frequency == Frequency.yearly))
+                          _buildProgressCard(
+                            title: 'Yearly Progress',
+                            habits: activeHabits,
+                            frequency: Frequency.yearly,
+                            typeLabel: 'yearly',
+                          ),
+                      ];
+
+                      if (progressCards.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'No active habits yet.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: textColorLight,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SizedBox(
+                        height: 300,
+                        child: PageView(
+                          controller: _pageController,
+                          children: progressCards,
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ACTIVE HABITS',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: textColorLight,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (currentUser == null)
+                  Text(
+                    'Sign in to see your habits.',
+                    style: TextStyle(color: textColorLight),
+                  )
+                else
+                  StreamBuilder<List<Habit>>(
+                    stream: _activeHabitsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Text('Error while loading data');
+                      }
 
-            const SizedBox(height: 16),
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-            if (currentUser == null)
-              Text(
-                'Sign in to see your habits.',
-                style: TextStyle(color: textColorLight),
-              )
-            else
-              StreamBuilder<List<Habit>>(
-                stream: _activeHabitsStream,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return const Text('Error while loading data');
-                  }
+                      final habits = snapshot.data ?? const <Habit>[];
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                      if (habits.isEmpty) {
+                        return Text(
+                          'No habits created yet.',
+                          style: TextStyle(color: textColorLight),
+                        );
+                      }
 
-                  final habits = snapshot.data ?? const <Habit>[];
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: habits.length,
+                        itemBuilder: (context, index) {
+                          final habit = habits[index];
 
-                  if (habits.isEmpty) {
-                    return Text(
-                      'No habits created yet.',
-                      style: TextStyle(color: textColorLight),
-                    );
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: habits.length,
-                    itemBuilder: (context, index) {
-                      final habit = habits[index];
-
-                      return HabitCard(
-                        category: habit.category,
-                        name: habit.name,
-                        goal: habit.goal,
-                        progress: habit.progress,
-                        unit: habit.unit,
-                        streak: habit.streak,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HabitDetailsScreen(
-                                habitId: habit.id,
-                                name: habit.name,
-                                goal: habit.goal,
-                                progress: habit.progress,
-                                unit: habit.unit,
-                                streak: habit.streak,
-                                created_at: Timestamp.fromDate(
-                                  habit.createdAt ?? DateTime.now(),
+                          return HabitCard(
+                            category: habit.category,
+                            name: habit.name,
+                            goal: habit.goal,
+                            progress: habit.progress,
+                            unit: habit.unit,
+                            streak: habit.streak,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => HabitDetailsScreen(
+                                    habitId: habit.id,
+                                    name: habit.name,
+                                    goal: habit.goal,
+                                    progress: habit.progress,
+                                    unit: habit.unit,
+                                    streak: habit.streak,
+                                    created_at: Timestamp.fromDate(
+                                      habit.createdAt ?? DateTime.now(),
+                                    ),
+                                    frequency: habit.frequency,
+                                  ),
                                 ),
-                                frequency: habit.frequency,
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
                       );
                     },
-                  );
-                },
-              ),
-          ],
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
