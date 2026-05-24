@@ -27,16 +27,18 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: _screens),
       
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateEntryScreen()),
-          );
-        },
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CreateEntryScreen()),
+                );
+              },
+              backgroundColor: primaryColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,

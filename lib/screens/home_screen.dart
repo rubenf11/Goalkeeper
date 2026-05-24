@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:goalkeeper/screens/habit_details_screen.dart';
-import 'package:goalkeeper/screens/create_entry_screen.dart';
 import '../data/models/habit.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/habit_card.dart';
@@ -93,16 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateEntryScreen()),
-          );
-        },
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
