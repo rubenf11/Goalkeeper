@@ -1,8 +1,15 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/storage_repository.dart';
 
 class AuthService {
   final AuthRepository _repository = AuthRepository();
+  final StorageRepository _storageRepository = StorageRepository();
+
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  Stream<User?> authStateChanges() => FirebaseAuth.instance.authStateChanges();
 
   Future<String?> registerUser({
     required String name,
@@ -47,5 +54,27 @@ class AuthService {
     } catch (e) {
       return "Error: $e";
     }
+  }
+
+  Future<String> updateProfilePhoto(File imageFile) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw StateError('User not authenticated.');
+      }
+
+      final String photoUrl = await _storageRepository.uploadProfileImage(imageFile, user.uid);
+      await user.updatePhotoURL(photoUrl);
+      await user.reload();
+      await _repository.updateUserPhotoUrl(user.uid, photoUrl);
+
+      return photoUrl;
+    } catch (e) {
+      throw Exception('Error updating profile photo: $e');
+    }
+  }
+
+  Future<void> signOut() async {
+    await _repository.signOut();
   }
 }

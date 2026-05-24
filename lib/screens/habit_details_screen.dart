@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../data/models/moment_photo.dart';
+import '../data/models/habit.dart';
 import 'package:goalkeeper/widgets/image_source_bottom_sheet.dart';
 import '../services/image_picker_helper.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'add_entry_screen.dart';
-import 'package:provider/provider.dart';
 import '../services/habit_service.dart';
+import '../services/moment_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class HabitDetailsScreen extends StatefulWidget {
   final String unit;
   final int streak;
   final Timestamp created_at;
+  final Frequency frequency;
 
   const HabitDetailsScreen({
     super.key,
@@ -27,6 +30,7 @@ class HabitDetailsScreen extends StatefulWidget {
     required this.unit,
     required this.streak,
     required this.created_at,
+    required this.frequency,
   });
 
   @override
@@ -39,8 +43,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final Color cardColor = Colors.white;
   final Color textColorDark = const Color(0xFF1E293B);
   final Color textColorLight = const Color(0xFF64748B);
-  
-  final ImagePickerHelper _imageHelper = ImagePickerHelper();
+  final HabitService _habitService = HabitService();
+  final MomentService _momentService = MomentService();
 
   String _selectedPeriod = 'Daily';
   String _selectedChartMode = 'Sum';
@@ -49,12 +53,19 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _chartStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
+    _chartStream = _habitService.watchDailyProgress(widget.habitId);
+
+    // Recalculate stats once when opening the habit details page to ensure
+    // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _habitService.recalculateHabitStats(widget.habitId).catchError((e, st) {
+        print('recalculateHabitStats (onOpen) ERROR for ${widget.habitId}: $e');
+        print(st);
+      });
+    });
   }
 
-  Future<void> _showConfirmationDialog() async {
-    bool _isDone = false;
-
+  Future<void> _showConfirmationDialog(bool isCurrentlyDone) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -65,11 +76,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             borderRadius: BorderRadiusGeometry.circular(16),
           ),
           title: Text(
-            "Mark as Completed",
+            isCurrentlyDone ? "Continue Habit" : "Mark as Completed",
             style: TextStyle(color: textColorDark, fontWeight: FontWeight.bold),
           ),
           content: Text(
-            "Are you sure you want to mark this habit as completed?",
+            isCurrentlyDone
+                ? "Are you sure you want to continue this habit?"
+                : "Are you sure you want to mark this habit as completed?",
             style: TextStyle(color: textColorLight),
           ),
           actions: <Widget>[
@@ -91,17 +104,23 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 ),
               ),
               child: Text(
-                "Confirm",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                isCurrentlyDone ? "Continue" : "Confirm",
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              onPressed: () {
-                setState(() {
-                  _isDone = true;
-                });
-
+              onPressed: () async {
                 Navigator.of(context).pop();
+                final error = await _habitService.setHabitCompletionStatus(
+                  habitId: widget.habitId,
+                  isDone: !isCurrentlyDone,
+                );
+
+                if (!mounted) return;
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Habit marked as completed!')),
+                  SnackBar(
+                    content: Text(error ?? 'Habit marked as completed!'),
+                    backgroundColor: error == null ? Colors.green : Colors.red,
+                  ),
                 );
               },
             ),
@@ -111,51 +130,54 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
-  Future<void> _handleImageSelection(ImageSource source) async {
-    Navigator.of(context).pop();
-    final File? image = await _imageHelper.pickImage(source);
-    if (image != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Photo selected with success."))
-      );
-    }
-  }
-
-  void _showImageSourceOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return ImageSourceBottomSheet(
-          onSourceSelected: _handleImageSelection,
-        );
-      }
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Listen to changes for this specific habit to keep UI updated
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('habits').doc(widget.habitId).snapshots(),
+    return StreamBuilder<Habit?>(
+      stream: _habitService.watchHabit(widget.habitId),
       builder: (context, snapshot) {
-        int currentProgress = widget.progress;
-        int currentStreak = widget.streak;
+        final habitData = snapshot.data;
 
-        if (snapshot.hasData && snapshot.data!.exists) {
-          var data = snapshot.data!.data() as Map<String, dynamic>;
-          currentProgress = (data['progress'] as num?)?.toInt() ?? 0;
-          currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
-        }
+        int currentProgress = habitData?.progress ?? widget.progress;
+        int currentStreak = habitData?.streak ?? widget.streak;
+        int currentHighestStreak = habitData?.highestStreak ?? 0;
+        int currentDaysCompleted = habitData?.daysCompleted ?? 0;
+        String periodSingular;
+        String periodPlural;
+        bool isDone = habitData?.isDone ?? false;
 
         double progressPercentage = widget.goal > 0 ? currentProgress / widget.goal : 0;
         if (progressPercentage > 1.0) progressPercentage = 1.0;
         
         DateTime date = widget.created_at.toDate();
         String habitDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+        switch (widget.frequency) {
+          case Frequency.daily:
+            periodSingular = 'day';
+            periodPlural = 'days';
+            break;
+          case Frequency.weekly:
+            periodSingular = 'week';
+            periodPlural = 'weeks';
+            break;
+          case Frequency.monthly:
+            periodSingular = 'month';
+            periodPlural = 'months';
+            break;
+          case Frequency.yearly:
+            periodSingular = 'year';
+            periodPlural = 'years';
+            break;
+        }
+
+        final streakPeriodLabel = currentStreak == 1 ? periodSingular : periodPlural;
+        final highestStreakPeriodLabel =
+            currentHighestStreak == 1 ? periodSingular : periodPlural;
+        final completedPeriodLabel =
+            currentDaysCompleted == 1 ? periodSingular : periodPlural;
+        final completedTitle =
+            '${completedPeriodLabel[0].toUpperCase()}${completedPeriodLabel.substring(1)} Completed';
 
         return Scaffold(
           backgroundColor: backgroundColor,
@@ -167,10 +189,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               icon: Icon(Icons.arrow_back_ios_new, color: textColorDark, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Text(
-              widget.name,
-              style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+            title: Text(widget.name, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
             actions: [
               PopupMenuButton(
                 icon: Icon(Icons.more_vert, color: textColorDark),
@@ -193,7 +212,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     );
                   }
                   else if (choice == 'mark_completed') {
-                    _showConfirmationDialog();
+                    _showConfirmationDialog(isDone);
                   }
                 },
                 itemBuilder: (context) => [
@@ -207,13 +226,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'mark_completed',
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
-                        SizedBox(width: 12),
-                        Text("Mark as completed"),
+                        const Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+                        const SizedBox(width: 12),
+                        Text(isDone ? 'Continue Habit' : 'Mark as completed'),
                       ],
                     ),
                   ),
@@ -229,9 +248,17 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 const SizedBox(height: 32),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard("STREAK", '$currentStreak days')),
+                    Expanded(child: _buildStatCard("STREAK", '$currentStreak $streakPeriodLabel')),
                     const SizedBox(width: 16),
                     Expanded(child: _buildStatCard("Created at", habitDate)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak $highestStreakPeriodLabel')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildStatCard(completedTitle, '$currentDaysCompleted')),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -318,7 +345,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value) {
+  Widget _buildStatCard(String title, String value, {bool large = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
@@ -330,7 +357,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         children: [
           Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColorDark)),
+          Text(value, style: TextStyle(fontSize: large ? 20 : 17, fontWeight: FontWeight.bold, color: textColorDark)),
         ],
       ),
     );
@@ -348,24 +375,104 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        const SizedBox(height: 100, child: Center(child: Text("No moments captured today", style: TextStyle(color: Colors.grey)))),
+        StreamBuilder<List<MomentPhoto>>(
+          stream: _momentService.watchHabitMoments(widget.habitId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final photos = snapshot.data ?? const <MomentPhoto>[];
+
+            if (photos.isEmpty) {
+              return const SizedBox(
+                height: 100,
+                child: Center(
+                  child: Text(
+                    "No moments captured yet",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              );
+            }
+
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: photos.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1,
+              ),
+              itemBuilder: (context, index) {
+                final photo = photos[index];
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        photo.imageUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const ColoredBox(
+                            color: Color(0xFFE2E8F0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return const ColoredBox(
+                            color: Color(0xFFE2E8F0),
+                            child: Center(child: Icon(Icons.broken_image_outlined)),
+                          );
+                        },
+                      ),
+                      if (photo.caption != null && photo.caption!.isNotEmpty)
+                        Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withOpacity(0.0),
+                                  Colors.black.withOpacity(0.65),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            child: Text(
+                              photo.caption!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ],
     );
   }
 
   Widget _buildChartSection() {
-    Stream<Map<String,num>> currentStream;
-
-    if (_selectedPeriod == 'Daily') {
-      currentStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
-    }
-    else if (_selectedPeriod == 'Weekly') {
-
-    }
-    else {
-
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

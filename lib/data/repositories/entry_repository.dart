@@ -8,18 +8,32 @@ class EntryRepository {
   Future<void> saveEntry({
     required String habitId,
     required String entryId,
-    required double value,
+    required String userId,
+    required double amount,
     required Timestamp timestamp,
+    String? imageUrl,
+    String? caption,
   }) async {
+    final Map<String, dynamic> payload = {
+      'user_id': userId,
+      'amount': amount,
+      'timestamp': timestamp,
+    };
+
+    if (imageUrl != null) {
+      payload['imageUrl'] = imageUrl;
+    }
+
+    if (caption != null && caption.trim().isNotEmpty) {
+      payload['caption'] = caption.trim();
+    }
+
     await _firestore
         .collection('habits')
         .doc(habitId)
         .collection('entries')
         .doc(entryId)
-        .set({
-      'value': value,
-      'timestamp': timestamp,
-    });
+        .set(payload);
 
     await _habitRepository.recalculateHabitStats(habitId);
   }

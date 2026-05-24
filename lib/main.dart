@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +7,8 @@ import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'services/entry_service.dart';
 import 'services/habit_service.dart';
+import 'services/moment_service.dart';
+import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,11 +17,17 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
+
   runApp(
     MultiProvider(
       providers: [
         Provider<HabitService>(create: (_) => HabitService()),
         Provider<EntryService>(create: (_) => EntryService()),
+        Provider<MomentService>(create: (_) => MomentService()),
       ],
       child: const MyApp(),
     ),
