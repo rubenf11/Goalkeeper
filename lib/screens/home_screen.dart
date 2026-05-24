@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 import 'package:goalkeeper/screens/habit_details_screen.dart';
 import '../data/models/habit.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final Color progressBgColor = const Color(0xFFEEF2F6);
   final Color completedCardColor = const Color(0xFF006B59);
 
-  User? get currentUser => FirebaseAuth.instance.currentUser;
+  final AuthService _authService = AuthService();
+  User? get currentUser => _authService.currentUser;
   late final Stream<List<Habit>> _activeHabitsStream;
   final UserService _userService = UserService();
 

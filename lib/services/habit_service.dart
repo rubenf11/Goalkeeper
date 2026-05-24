@@ -83,6 +83,10 @@ class HabitService {
     return _repository.watchDailyProgress(habitId);
   }
 
+  Stream<Habit?> watchHabit(String habitId) {
+    return _repository.watchHabit(habitId);
+  }
+
   Future<String?> setHabitCompletionStatus({
     required String habitId,
     required bool isDone,

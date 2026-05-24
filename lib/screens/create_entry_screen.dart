@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../data/models/habit.dart';
 import '../services/habit_service.dart';
@@ -18,10 +18,11 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
   final Color textColorDark = const Color(0xFF1E293B);
 
   final HabitService _habitService = HabitService();
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUser = _authService.currentUser;
 
     return Scaffold(
       backgroundColor: backgroundColor,

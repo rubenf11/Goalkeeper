@@ -273,9 +273,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authService.authStateChanges(),
       builder: (context, authSnapshot) {
-        final currentUser = authSnapshot.data ?? FirebaseAuth.instance.currentUser;
+        final currentUser = authSnapshot.data ?? _authService.currentUser;
 
         if (authSnapshot.connectionState == ConnectionState.waiting && currentUser == null) {
           return const Scaffold(
@@ -312,7 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 actions: [
                   IconButton(
                     onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
+                      await _authService.signOut();
                       if (mounted) {
                         Navigator.of(context).pushReplacementNamed('/login');
                       }

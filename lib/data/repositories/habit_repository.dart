@@ -310,4 +310,12 @@ class HabitRepository {
     final snapshot = await _firestore.collection('habits').where('user_id', isEqualTo: userId).get();
     return snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
   }
+
+  Stream<Habit?> watchHabit(String habitId) {
+    return _firestore.collection('habits').doc(habitId).snapshots().map((snap) {
+      if (!snap.exists) return null;
+      final data = snap.data() as Map<String, dynamic>;
+      return Habit.fromMap(data, id: snap.id);
+    });
+  }
 }

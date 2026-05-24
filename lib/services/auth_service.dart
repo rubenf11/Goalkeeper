@@ -7,6 +7,10 @@ class AuthService {
   final AuthRepository _repository = AuthRepository();
   final StorageRepository _storageRepository = StorageRepository();
 
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  Stream<User?> authStateChanges() => FirebaseAuth.instance.authStateChanges();
+
   Future<String?> registerUser({
     required String name,
     required String username,
@@ -68,5 +72,9 @@ class AuthService {
     } catch (e) {
       throw Exception('Error updating profile photo: $e');
     }
+  }
+
+  Future<void> signOut() async {
+    await _repository.signOut();
   }
 }

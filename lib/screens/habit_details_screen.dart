@@ -126,25 +126,18 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     // Listen to changes for this specific habit to keep UI updated
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('habits').doc(widget.habitId).snapshots(),
+    return StreamBuilder<Habit?>(
+      stream: _habitService.watchHabit(widget.habitId),
       builder: (context, snapshot) {
-        int currentProgress = widget.progress;
-        int currentStreak = widget.streak;
-        int currentHighestStreak = 0;
-        int currentDaysCompleted = 0;
+        final habitData = snapshot.data;
+
+        int currentProgress = habitData?.progress ?? widget.progress;
+        int currentStreak = habitData?.streak ?? widget.streak;
+        int currentHighestStreak = habitData?.highestStreak ?? 0;
+        int currentDaysCompleted = habitData?.daysCompleted ?? 0;
         String periodSingular;
         String periodPlural;
-        bool isDone = false;
-
-        if (snapshot.hasData && snapshot.data!.exists) {
-          var data = snapshot.data!.data() as Map<String, dynamic>;
-          currentProgress = (data['progress'] as num?)?.toInt() ?? 0;
-          currentStreak = (data['streak'] as num?)?.toInt() ?? 0;
-          currentHighestStreak = (data['highest_streak'] as num?)?.toInt() ?? 0;
-          currentDaysCompleted = (data['days_completed'] as num?)?.toInt() ?? 0;
-          isDone = data['is_done'] as bool? ?? false;
-        }
+        bool isDone = habitData?.isDone ?? false;
 
         double progressPercentage = widget.goal > 0 ? currentProgress / widget.goal : 0;
         if (progressPercentage > 1.0) progressPercentage = 1.0;
