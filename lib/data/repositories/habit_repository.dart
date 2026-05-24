@@ -305,4 +305,9 @@ class HabitRepository {
         return progressMap;
       });
   }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> fetchHabitsForUser(String userId) async {
+    final snapshot = await _firestore.collection('habits').where('user_id', isEqualTo: userId).get();
+    return snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
+  }
 }

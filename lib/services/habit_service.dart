@@ -56,6 +56,21 @@ class HabitService {
     await _repository.recalculateHabitStats(habitId);
   }
 
+  Future<void> refreshAllHabits() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final docs = await _repository.fetchHabitsForUser(user.uid);
+    for (var doc in docs) {
+      try {
+        await recalculateHabitStats(doc.id);
+      } catch (_) {
+        // ignore individual failures
+      }
+    }
+  }
+
   Stream<List<Habit>> watchCurrentUserHabits() {
     return _repository.watchCurrentUserHabits();
   }

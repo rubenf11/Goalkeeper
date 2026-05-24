@@ -10,6 +10,7 @@ import '../data/models/moment_photo.dart';
 import '../services/auth_service.dart';
 import '../services/habit_service.dart';
 import '../services/moment_service.dart';
+import '../services/user_service.dart';
 import '../widgets/habit_card.dart';
 import 'habit_details_screen.dart';
 import 'home_screen.dart';
@@ -30,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   final MomentService _momentService = MomentService();
   final HabitService _habitService = HabitService();
+  final UserService _userService = UserService();
   bool _isUploadingPhoto = false;
 
   Future<void> _pickAndUploadProfilePhoto() async {
@@ -288,10 +290,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).snapshots(),
+        return StreamBuilder<Map<String, dynamic>?>(
+          stream: _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
-            final userData = userSnapshot.data?.data();
+            final userData = userSnapshot.data;
             final String? photoUrl = userData?['photoUrl'] as String? ?? currentUser.photoURL;
             final String displayName = userData?['name'] as String? ?? currentUser.displayName ?? '??????';
             final String? username = userData?['username'] as String?;

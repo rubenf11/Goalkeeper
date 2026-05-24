@@ -7,6 +7,7 @@ import '../data/models/habit.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/habit_card.dart';
 import '../services/habit_service.dart';
+import '../services/user_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   User? get currentUser => FirebaseAuth.instance.currentUser;
   late final Stream<List<Habit>> _activeHabitsStream;
+  final UserService _userService = UserService();
 
   final PageController _pageController = PageController();
 
@@ -40,8 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _activeHabitsStream = context.read<HabitService>().watchCurrentUserActiveHabits();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      refreshAllHabits();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<HabitService>().refreshAllHabits();
     });
   }
 
@@ -55,32 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (hour < 12) return 'Good morning';
     if (hour < 19) return 'Good afternoon';
     return 'Good evening';
-  }
-
-  Future<void> refreshAllHabits() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      // Query habits where user_id matches the current user
-      print("DEBUG: Fetching habits for user: ${user.uid}");
-      final snapshot = await FirebaseFirestore.instance
-          .collection('habits')
-          .where('user_id', isEqualTo: user.uid)
-          .get();
-
-
-      print("DEBUG: Found ${snapshot.docs.length} habits to recalculate");
-
-      final habitService = HabitService(); // Initialize your service
-
-      for (var doc in snapshot.docs) {
-        await habitService.recalculateHabitStats(doc.id);
-      }
-      print("DEBUG: Refresh complete");
-    } catch (e) {
-      debugPrint("Error refreshing habits: $e");
-    }
   }
 
   @override
@@ -130,12 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: user == null
-              ? null
-              : FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+        child: StreamBuilder<Map<String, dynamic>?>(
+          stream: user == null ? Stream.value(null) : _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
-            final userData = userSnapshot.data?.data();
+            final userData = userSnapshot.data;
             final String displayName = userData?['name'] as String? ?? getFirstName();
 
             return Column(
@@ -143,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Row(
                   children: [
-                    
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
