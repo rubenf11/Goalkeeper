@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_habit_screen.dart';
+import 'achievements_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'create_entry_screen.dart';
@@ -19,6 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const CreateHabitScreen(),
+    const AchievementsScreen(),
     const ProfileScreen(),
   ];
 
@@ -57,6 +59,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.add_circle_outline),
             label: 'Add Habit',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_events_outlined),
+            label: 'Achievements',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

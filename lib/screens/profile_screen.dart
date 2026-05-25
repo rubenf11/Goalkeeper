@@ -95,7 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: CircleAvatar(
               radius: 60,
-              backgroundColor: primaryColor.withOpacity(0.1),
+              backgroundColor: primaryColor.withValues(alpha: 0.1),
               backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
               child: photoUrl == null
                   ? Icon(Icons.person, size: 60, color: primaryColor)
@@ -370,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               appBar: AppBar(
                 backgroundColor: backgroundColor,
                 elevation: 2,
-                shadowColor: Colors.black.withOpacity(0.3),
+                shadowColor: Colors.black.withValues(alpha: 0.3),
                 surfaceTintColor: Colors.transparent,
                 title: Text(
                   'GoalKeeper',
