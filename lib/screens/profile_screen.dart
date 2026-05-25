@@ -165,124 +165,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: photos.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1,
-          ),
-          itemBuilder: (context, index) {
-            final photo = photos[index];
+        return SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal, 
+            itemCount: photos.length,
+            itemBuilder: (context, index) {
+              final photo = photos[index];
 
-            return GestureDetector(
-              onTap: () async {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(child: CircularProgressIndicator()),
-                );
+              return Container(
+                width: 140,
+                margin: const EdgeInsets.only(right: 16),
+                child: GestureDetector(
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                    );
 
-                final entryService = context.read<EntryService>();
+                    final entryService = context.read<EntryService>();
 
-                final habitService = context.read<HabitService>();
+                    final habitService = context.read<HabitService>();
 
-                final entry = await entryService.getEntryByImageUrl(photo.habitId, photo.imageUrl);
+                    final entry = await entryService.getEntryByImageUrl(photo.habitId, photo.imageUrl);
 
-                final habit = await habitService.watchHabit(photo.habitId).first;
+                    final habit = await habitService.watchHabit(photo.habitId).first;
 
-                if (context.mounted) Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
 
-                if (entry != null && habit != null && context.mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) => MomentDetailDialog(
-                      photo: photo,
-                      entry: entry,
-                      habitName: habit.name,
-                      unit: habit.unit,
-                    ),
-                  );
-                }
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      photo.imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const ColoredBox(
-                          color: Color(0xFFE2E8F0),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const ColoredBox(
-                          color: Color(0xFFE2E8F0),
-                          child: Center(child: Icon(Icons.broken_image_outlined)),
-                        );
-                      },
-                    ),
-                    if (photo.caption != null && photo.caption!.isNotEmpty)
-                      Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.black.withOpacity(0.0),
-                                Colors.black.withOpacity(0.65),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          child: Text(
-                            photo.caption!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                    if (entry != null && habit != null && context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => MomentDetailDialog(
+                          photo: photo,
+                          entry: entry,
+                          habitName: habit.name,
+                          unit: habit.unit,
                         ),
-                      ),
-                  ],
+                      );
+                    }
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          photo.imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: Icon(Icons.broken_image_outlined)),
+                            );
+                          },
+                        ),
+                        if (photo.caption != null && photo.caption!.isNotEmpty)
+                          Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withOpacity(0.0),
+                                    Colors.black.withOpacity(0.65),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                              child: Text(
+                                photo.caption!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            );
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                photo.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const ColoredBox(
-                    color: Color(0xFFE2E8F0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return const ColoredBox(
-                    color: Color(0xFFE2E8F0),
-                    child: Center(child: Icon(Icons.broken_image_outlined)),
-                  );
-                },
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
