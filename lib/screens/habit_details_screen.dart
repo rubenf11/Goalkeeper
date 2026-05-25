@@ -12,6 +12,8 @@ import 'add_entry_screen.dart';
 import '../services/habit_service.dart';
 import '../services/moment_service.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../widgets/moment_details_dialog.dart';
+import '../services/entry_service.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   final String habitId;
@@ -45,8 +47,6 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   final Color cardColor = Colors.white;
   final Color textColorDark = const Color(0xFF1E293B);
   final Color textColorLight = const Color(0xFF64748B);
-  final HabitService _habitService = HabitService();
-  final MomentService _momentService = MomentService();
 
   String _selectedPeriod = 'Daily';
   String _selectedChartMode = 'Sum';
@@ -55,12 +55,12 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _chartStream = _habitService.watchDailyProgress(widget.habitId);
+    _chartStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
 
     // Recalculate stats once when opening the habit details page to ensure
     // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _habitService.recalculateHabitStats(widget.habitId).catchError((e, st) {
+      context.read<HabitService>().recalculateHabitStats(widget.habitId).catchError((e, st) {
         print('recalculateHabitStats (onOpen) ERROR for ${widget.habitId}: $e');
         print(st);
       });
@@ -111,19 +111,29 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               ),
               onPressed: () async {
                 Navigator.of(context).pop();
-                final error = await _habitService.setHabitCompletionStatus(
+                final error = await context.read<HabitService>().setHabitCompletionStatus(
                   habitId: widget.habitId,
                   isDone: !isCurrentlyDone,
                 );
 
                 if (!mounted) return;
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(error ?? 'Habit marked as completed!'),
-                    backgroundColor: error == null ? Colors.green : Colors.red,
-                  ),
-                );
+                if(!isCurrentlyDone) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error ?? 'Habit marked as completed!'),
+                      backgroundColor: error == null ? Colors.green : Colors.red,
+                    ),
+                  );
+                }
+                else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error ?? 'Habit reativated!'),
+                      backgroundColor: error == null ? Colors.green : Colors.red,
+                    ),
+                  );
+                }
               },
             ),
           ],
@@ -136,7 +146,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   Widget build(BuildContext context) {
     // Listen to changes for this specific habit to keep UI updated
     return StreamBuilder<Habit?>(
-      stream: _habitService.watchHabit(widget.habitId),
+      stream: context.read<HabitService>().watchHabit(widget.habitId),
       builder: (context, snapshot) {
         final habitData = snapshot.data;
 
@@ -311,6 +321,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 const SizedBox(height: 24),
                 _buildActiveChart(widget.habitId, _selectedChartMode),
                 const SizedBox(height: 24),
+                _buildDailyMomentsSection(),
+
               ],
             ),
           ),
@@ -372,13 +384,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Captured Moments", style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 16)),
+            Text("Captured Moments", style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 18)),
             Text("View Gallery", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14)),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         StreamBuilder<List<MomentPhoto>>(
-          stream: _momentService.watchHabitMoments(widget.habitId),
+          stream: context.read<MomentService>().watchHabitMoments(widget.habitId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
@@ -406,64 +418,92 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: photos.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
                 childAspectRatio: 1,
               ),
               itemBuilder: (context, index) {
                 final photo = photos[index];
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        photo.imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const ColoredBox(
-                            color: Color(0xFFE2E8F0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const ColoredBox(
-                            color: Color(0xFFE2E8F0),
-                            child: Center(child: Icon(Icons.broken_image_outlined)),
-                          );
-                        },
-                      ),
-                      if (photo.caption != null && photo.caption!.isNotEmpty)
-                        Align(
-                          alignment: Alignment.bottomLeft,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.black.withOpacity(0.0),
-                                  Colors.black.withOpacity(0.65),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
+
+                return GestureDetector(
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                    );
+
+                    final entryService = context.read<EntryService>();
+
+                    final entry = await entryService.getEntryByImageUrl(widget.habitId, photo.imageUrl);
+
+                    if (context.mounted) Navigator.pop(context);
+
+                    if (entry != null && context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => MomentDetailDialog(
+                          photo: photo,
+                          entry: entry,
+                          habitName: widget.name,
+                          unit: widget.unit,
+                        ),
+                      );
+                    }
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          photo.imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: Icon(Icons.broken_image_outlined)),
+                            );
+                          },
+                        ),
+                        if (photo.caption != null && photo.caption!.isNotEmpty)
+                          Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withOpacity(0.0),
+                                    Colors.black.withOpacity(0.65),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              photo.caption!,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              child: Text(
+                                photo.caption!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
