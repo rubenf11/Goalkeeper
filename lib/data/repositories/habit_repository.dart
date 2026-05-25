@@ -38,22 +38,6 @@ class HabitRepository {
     return habitToSave;
   }
 
-  Future<void> addEntry(String habitId, int amount) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) throw StateError('User not authenticated');
-
-    final habitRef = _firestore.collection('habits').doc(habitId);
-
-    // 1. Add the entry to the subcollection
-    await habitRef.collection('entries').add({
-      'amount': amount,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    // 2. Recalculate stats
-    await recalculateHabitStats(habitId);
-  }
-
   Future<void> recalculateHabitStats(String habitId) async {
     final habitRef = _firestore.collection('habits').doc(habitId);
     final habitSnap = await habitRef.get();
@@ -329,7 +313,7 @@ class HabitRepository {
           final monday = date.subtract(Duration(days: date.weekday - 1));
           final weekLabel = "${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}";
 
-          final amount = (data['value'] ?? 0);
+          final amount = (data['amount'] ?? 0);
           weeklyMap[weekLabel] = (weeklyMap[weekLabel] ?? 0) + amount;
         }
 
@@ -367,7 +351,7 @@ class HabitRepository {
 
           final monthLabel = "${date.year}-${date.month.toString().padLeft(2, '0')}";
 
-          final amount = (data['value'] ?? 0);
+          final amount = (data['amount'] ?? 0);
           sumMap[monthLabel] = (sumMap[monthLabel] ?? 0) + amount;
         }
 

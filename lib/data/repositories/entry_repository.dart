@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'habit_repository.dart';
+import '../models/entry.dart';
 
 class EntryRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,5 +46,39 @@ class EntryRepository {
     await _firestore.collection('habits').doc(habitId).update({
       'progress': newProgress,
     });
+  }
+
+  Stream<List<Entry>> watchHabitEntries(String habitId) {
+    return _firestore
+        .collection('habits')
+        .doc(habitId)
+        .collection('entries')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            return Entry.fromMap(doc.data(), id: doc.id);
+          }).toList();
+        });
+  }
+
+  Future<Entry?> getEntryByImageUrl(String habitId, String imageUrl) async {
+    try {
+      final snapshot = await _firestore
+          .collection('habits')
+          .doc(habitId)
+          .collection('entries')
+          .where('imageUrl', isEqualTo: imageUrl)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
+        return Entry.fromMap(doc.data(), id: doc.id);
+      }
+    } catch (e) {
+      print("Erro ao buscar entry pela imagem: $e");
+    }
+    return null;
   }
 }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../data/repositories/entry_repository.dart';
 import '../data/repositories/storage_repository.dart';
+import '../data/models/entry.dart';
 
 class EntryService {
   final EntryRepository _repository = EntryRepository();
@@ -44,5 +45,9 @@ class EntryService {
     } catch (e) {
       return "Error trying to save entry: $e";
     }
+  }
+
+  Future<Entry?> getEntryByImageUrl(String habitId, String imageUrl) async {
+    return await _repository.getEntryByImageUrl(habitId, imageUrl);
   }
 }

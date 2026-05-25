@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:provider/provider.dart';
 import '../data/models/habit.dart';
 import '../data/models/moment_photo.dart';
 import '../services/auth_service.dart';
@@ -14,6 +14,8 @@ import '../services/user_service.dart';
 import '../widgets/habit_card.dart';
 import 'habit_details_screen.dart';
 import 'home_screen.dart';
+import '../services/entry_service.dart';
+import '../widgets/moment_details_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -163,39 +165,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: photos.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1,
+        return SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal, 
+            itemCount: photos.length,
+            itemBuilder: (context, index) {
+              final photo = photos[index];
+
+              return Container(
+                width: 140,
+                margin: const EdgeInsets.only(right: 16),
+                child: GestureDetector(
+                  onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                    );
+
+                    final entryService = context.read<EntryService>();
+
+                    final habitService = context.read<HabitService>();
+
+                    final entry = await entryService.getEntryByImageUrl(photo.habitId, photo.imageUrl);
+
+                    final habit = await habitService.watchHabit(photo.habitId).first;
+
+                    if (context.mounted) Navigator.pop(context);
+
+                    if (entry != null && habit != null && context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => MomentDetailDialog(
+                          photo: photo,
+                          entry: entry,
+                          habitName: habit.name,
+                          unit: habit.unit,
+                        ),
+                      );
+                    }
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          photo.imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const ColoredBox(
+                              color: Color(0xFFE2E8F0),
+                              child: Center(child: Icon(Icons.broken_image_outlined)),
+                            );
+                          },
+                        ),
+                        if (photo.caption != null && photo.caption!.isNotEmpty)
+                          Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withOpacity(0.0),
+                                    Colors.black.withOpacity(0.65),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                              child: Text(
+                                photo.caption!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          itemBuilder: (context, index) {
-            final photo = photos[index];
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                photo.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const ColoredBox(
-                    color: Color(0xFFE2E8F0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return const ColoredBox(
-                    color: Color(0xFFE2E8F0),
-                    child: Center(child: Icon(Icons.broken_image_outlined)),
-                  );
-                },
-              ),
-            );
-          },
         );
       },
     );
