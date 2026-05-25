@@ -1,12 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import '../data/models/moment_photo.dart';
 import '../data/models/habit.dart';
-import 'package:goalkeeper/widgets/image_source_bottom_sheet.dart';
-import '../services/image_picker_helper.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'add_entry_screen.dart';
 import '../services/habit_service.dart';
@@ -330,7 +325,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             child: CircularProgressIndicator(
               value: percentage,
               strokeWidth: 20,
-              backgroundColor: primaryColor.withOpacity(0.1),
+              backgroundColor: primaryColor.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
               strokeCap: StrokeCap.round,
             ),
@@ -353,7 +348,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -444,8 +439,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.black.withOpacity(0.0),
-                                  Colors.black.withOpacity(0.65),
+                                  Colors.black.withValues(alpha: 0.0),
+                                  Colors.black.withValues(alpha: 0.65),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -494,7 +489,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 4), 
               ),
@@ -571,7 +566,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           curve: Curves.easeInOut,
                           height: 120 * percentage,
                           decoration: BoxDecoration(
-                            color: percentage >= 1.0 ? Colors.blue : Colors.red.withOpacity(0.4),
+                            color: percentage >= 1.0 ? Colors.blue : Colors.red.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
@@ -622,7 +617,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         )
@@ -850,7 +845,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       belowBarData: BarAreaData(
                         show: true,
                         gradient: LinearGradient(
-                          colors: [primaryColor.withOpacity(0.3), primaryColor.withOpacity(0.0)],
+                          colors: [primaryColor.withValues(alpha: 0.3), primaryColor.withValues(alpha: 0.0)],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),

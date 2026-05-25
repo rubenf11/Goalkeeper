@@ -65,7 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: textColorLight.withOpacity(0.5)),
+            hintStyle: TextStyle(color: textColorLight.withValues(alpha: 0.5)),
             prefixIcon: Icon(icon, color: textColorLight),
             suffixIcon: isPassword ? Icon(Icons.visibility_outlined, color: textColorLight) : null,
             filled: true,
