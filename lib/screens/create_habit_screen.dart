@@ -296,7 +296,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                     thickness: 3,
                     radius: const Radius.circular(999),
                     scrollbarOrientation: ScrollbarOrientation.bottom,
-                    thumbColor: _primaryColor.withOpacity(0.75),
+                    thumbColor: _primaryColor.withValues(alpha: 0.75),
                     trackColor: Colors.grey.shade300,
                     trackBorderColor: Colors.transparent,
                     child: GridView.builder(
@@ -451,7 +451,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                       ),
                       Switch(
                         value: _accelerometerEnabled,
-                        activeColor: Colors.white,
+                        activeThumbColor: Colors.white,
                         activeTrackColor: _primaryColor,
                         onChanged: (value) {
                           setState(() {
@@ -470,7 +470,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _primaryColor,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: _primaryColor.withOpacity(0.55),
+                      disabledBackgroundColor: _primaryColor.withValues(alpha: 0.55),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),

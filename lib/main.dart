@@ -5,6 +5,7 @@ import 'screens/register_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
+import 'services/achievement_service.dart';
 import 'services/entry_service.dart';
 import 'services/habit_service.dart';
 import 'services/moment_service.dart';
@@ -25,6 +26,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<AchievementService>(create: (_) => AchievementService()),
         Provider<HabitService>(create: (_) => HabitService()),
         Provider<EntryService>(create: (_) => EntryService()),
         Provider<MomentService>(create: (_) => MomentService()),

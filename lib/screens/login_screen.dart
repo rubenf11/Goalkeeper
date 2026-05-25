@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // Divisor
               Row(
                 children: [
-                  Expanded(child: Divider(color: textColorLight.withOpacity(0.9))),
+                  Expanded(child: Divider(color: textColorLight.withValues(alpha: 0.9))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -217,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  Expanded(child: Divider(color: textColorLight.withOpacity(0.9))),
+                  Expanded(child: Divider(color: textColorLight.withValues(alpha: 0.9))),
                 ],
               ),
               const SizedBox(height: 24),
