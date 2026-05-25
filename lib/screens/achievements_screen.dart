@@ -2,10 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../data/models/habit.dart';
+import '../data/models/category_achievement.dart';
 import '../widgets/habit_category_catalog.dart';
 import '../services/auth_service.dart';
-import '../services/habit_service.dart';
+import '../services/achievement_service.dart';
 
 class AchievementsScreen extends StatelessWidget {
   const AchievementsScreen({super.key});
@@ -18,7 +18,7 @@ class AchievementsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final HabitService habitService = context.read<HabitService>();
+    final AchievementService achievementService = context.read<AchievementService>();
     final User? currentUser = AuthService().currentUser;
 
     return Scaffold(
@@ -38,43 +38,14 @@ class AchievementsScreen extends StatelessWidget {
       ),
       body: currentUser == null
           ? const Center(child: Text('Please sign in to view your achievements.'))
-          : StreamBuilder<List<Habit>>(
-              stream: habitService.watchCurrentUserHabits(),
+          : StreamBuilder<List<CategoryAchievement>>(
+              stream: achievementService.watchCategoryAchievements(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
-                final List<Habit> habits = snapshot.data ?? const <Habit>[];
-                final Map<String, List<Habit>> habitsByCategory = {};
-                for (final Habit habit in habits) {
-                  habitsByCategory.putIfAbsent(habit.category, () => <Habit>[]).add(habit);
-                }
-
-                final List<_CategoryMedal> categoryMedals = habitsByCategory.entries.map((entry) {
-                  final HabitCategoryOption categoryOption = HabitCategoryCatalog.optionFor(entry.key);
-                  final List<Habit> categoryHabits = entry.value;
-                  final int completedCount = categoryHabits.where((habit) => habit.isDone).length;
-                  final int points = _pointsForCategory(categoryHabits);
-                  final _MedalTier medalTier = _medalTierForPoints(points);
-
-                  return _CategoryMedal(
-                    categoryName: entry.key,
-                    icon: categoryOption.icon,
-                    habitCount: categoryHabits.length,
-                    completedCount: completedCount,
-                    points: points,
-                    medalTier: medalTier,
-                  );
-                }).toList()
-                  ..sort((a, b) {
-                    final int pointsComparison = b.points.compareTo(a.points);
-                    if (pointsComparison != 0) {
-                      return pointsComparison;
-                    }
-
-                    return a.categoryName.toLowerCase().compareTo(b.categoryName.toLowerCase());
-                  });
+                final List<CategoryAchievement> categoryMedals =
+                    snapshot.data ?? const <CategoryAchievement>[];
 
                 return SingleChildScrollView(
                   clipBehavior: Clip.none,
@@ -155,107 +126,51 @@ class AchievementsScreen extends StatelessWidget {
   }
 }
 
-class _CategoryMedal {
-  const _CategoryMedal({
-    required this.categoryName,
-    required this.icon,
-    required this.habitCount,
-    required this.completedCount,
-    required this.points,
-    required this.medalTier,
-  });
-
-  final String categoryName;
-  final IconData icon;
-  final int habitCount;
-  final int completedCount;
-  final int points;
-  final _MedalTier medalTier;
-}
-
-class _MedalTier {
-  const _MedalTier({
-    required this.name,
+class _MedalVisualStyle {
+  const _MedalVisualStyle({
     required this.color,
     required this.textColor,
     required this.borderColor,
-    required this.minPoints,
-    required this.maxPoints,
   });
 
-  final String name;
   final Color color;
   final Color textColor;
   final Color borderColor;
-  final int minPoints;
-  final int maxPoints;
 }
 
-int _pointsForCategory(List<Habit> habits) {
-  return habits.fold<int>(0, (sum, habit) => sum + (habit.daysCompleted * _pointsPerCompletion(habit.frequency)));
-}
-
-int _pointsPerCompletion(Frequency frequency) {
-  switch (frequency) {
-    case Frequency.daily:
-      return 1;
-    case Frequency.weekly:
-      return 7;
-    case Frequency.monthly:
-      return 30;
-    case Frequency.yearly:
-      return 360;
+_MedalVisualStyle _visualStyleForTier(AchievementTier tier) {
+  switch (tier) {
+    case AchievementTier.green:
+      return const _MedalVisualStyle(
+        color: Color(0xFF2F9E44),
+        textColor: Colors.white,
+        borderColor: Color(0xFF23703A),
+      );
+    case AchievementTier.gold:
+      return const _MedalVisualStyle(
+        color: Color(0xFFD4AF37),
+        textColor: Color(0xFF3A2B00),
+        borderColor: Color(0xFFB38E19),
+      );
+    case AchievementTier.silver:
+      return const _MedalVisualStyle(
+        color: Color(0xFFC0C0C0),
+        textColor: Color(0xFF334155),
+        borderColor: Color(0xFF8A8A8A),
+      );
+    case AchievementTier.bronze:
+      return const _MedalVisualStyle(
+        color: Color(0xFFCD7F32),
+        textColor: Colors.white,
+        borderColor: Color(0xFF9A5E22),
+      );
   }
-}
-
-_MedalTier _medalTierForPoints(int points) {
-  if (points >= 100) {
-    return const _MedalTier(
-      name: 'Green',
-      color: Color(0xFF2F9E44),
-      textColor: Colors.white,
-      borderColor: Color(0xFF23703A),
-      minPoints: 100,
-      maxPoints: 100,
-    );
-  }
-
-  if (points >= 50) {
-    return const _MedalTier(
-      name: 'Gold',
-      color: Color(0xFFD4AF37),
-      textColor: Color(0xFF3A2B00),
-      borderColor: Color(0xFFB38E19),
-      minPoints: 50,
-      maxPoints: 100,
-    );
-  }
-
-  if (points >= 25) {
-    return const _MedalTier(
-      name: 'Silver',
-      color: Color(0xFFC0C0C0),
-      textColor: Color(0xFF334155),
-      borderColor: Color(0xFF8A8A8A),
-      minPoints: 25,
-      maxPoints: 50,
-    );
-  }
-
-  return const _MedalTier(
-    name: 'Bronze',
-    color: Color(0xFFCD7F32),
-    textColor: Colors.white,
-    borderColor: Color(0xFF9A5E22),
-    minPoints: 0,
-    maxPoints: 25,
-  );
 }
 
 class _CategoryMedalCard extends StatelessWidget {
   const _CategoryMedalCard({required this.medal});
 
-  final _CategoryMedal medal;
+  final CategoryAchievement medal;
 
   double _categoryFontSize(String categoryName) {
     final int length = categoryName.trim().length;
@@ -276,23 +191,20 @@ class _CategoryMedalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final HabitCategoryOption categoryOption =
+        HabitCategoryCatalog.optionFor(medal.categoryName);
+    final _MedalVisualStyle visualStyle = _visualStyleForTier(medal.tier);
     const double progressElementHeight = 12;
-
-    final double progress = medal.medalTier.maxPoints == medal.medalTier.minPoints
-        ? 1.0
-        : ((medal.points - medal.medalTier.minPoints) /
-                (medal.medalTier.maxPoints - medal.medalTier.minPoints))
-            .clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: medal.medalTier.borderColor.withValues(alpha: 0.35)),
+        border: Border.all(color: visualStyle.borderColor.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: medal.medalTier.color.withValues(alpha: 0.08),
+            color: visualStyle.color.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -321,18 +233,18 @@ class _CategoryMedalCard extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  medal.medalTier.color.withValues(alpha: 0.95),
-                  medal.medalTier.color,
+                  visualStyle.color.withValues(alpha: 0.95),
+                  visualStyle.color,
                 ],
                 stops: const [0.2, 1.0],
               ),
               border: Border.all(
-                color: medal.medalTier.borderColor,
+                color: visualStyle.borderColor,
                 width: 3,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: medal.medalTier.color.withValues(alpha: 0.25),
+                  color: visualStyle.color.withValues(alpha: 0.25),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -342,11 +254,10 @@ class _CategoryMedalCard extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 Icon(
-                  medal.icon,
+                  categoryOption.icon,
                   size: 36,
-                  color: medal.medalTier.textColor,
+                  color: visualStyle.textColor,
                 ),
-                
               ],
             ),
           ),
@@ -359,10 +270,10 @@ class _CategoryMedalCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
-                    value: progress,
+                    value: medal.progress,
                     minHeight: progressElementHeight,
                     backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(medal.medalTier.color),
+                    valueColor: AlwaysStoppedAnimation<Color>(visualStyle.color),
                   ),
                 ),
                 Positioned.fill(
