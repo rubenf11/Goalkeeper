@@ -196,16 +196,19 @@ class _AccelerometerConfirmationSheetState
             ),
             const SizedBox(height: 12),
             if (_selectedImage == null)
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Capture Moment'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: primaryColor,
-                  side: BorderSide(color: primaryColor),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Capture Moment'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               )

@@ -4,10 +4,23 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 const String _notificationChannelId = 'goal_keeper_recording';
 const String _notificationChannelName = 'Recording Service';
 const String _notificationChannelDesc = 'Shows when a habit is being recorded';
-const int _notificationId = 888;
+const int _foregroundNotificationId = 888;
 
 final FlutterLocalNotificationsPlugin _notifications =
     FlutterLocalNotificationsPlugin();
+
+String _progressText(int steps, double distanceMeters, String unit) {
+  switch (unit) {
+    case 'steps':
+      return '$steps steps';
+    case 'km':
+      return '${(distanceMeters / 1000).toStringAsFixed(2)} km';
+    case 'miles':
+      return '${(distanceMeters / 1609.34).toStringAsFixed(2)} mi';
+    default:
+      return '${distanceMeters.toStringAsFixed(1)} m';
+  }
+}
 
 class BackgroundRecordingService {
   static final BackgroundRecordingService _instance =
@@ -44,9 +57,9 @@ class BackgroundRecordingService {
         autoStart: false,
         isForegroundMode: true,
         notificationChannelId: _notificationChannelId,
-        initialNotificationTitle: 'Recording...',
-        initialNotificationContent: 'Tracking your activity',
-        foregroundServiceNotificationId: _notificationId,
+        initialNotificationTitle: 'GoalKeeper',
+        initialNotificationContent: 'No active recordings',
+        foregroundServiceNotificationId: _foregroundNotificationId,
       ),
     );
   }
@@ -58,29 +71,19 @@ class BackgroundRecordingService {
     });
   }
 
-  Future<void> start({int steps = 0, String elapsed = '0s'}) async {
+  Future<void> _ensureForegroundService() async {
     final service = FlutterBackgroundService();
     final isRunning = await service.isRunning();
     if (!isRunning) {
       await service.startService();
     }
-
-    await _updateNotification(steps: steps, elapsed: elapsed);
   }
 
-  Future<void> update({int steps = 0, String elapsed = '0s'}) async {
-    if (!_initialized) return;
-    final service = FlutterBackgroundService();
-    final isRunning = await service.isRunning();
-    if (!isRunning) return;
-
-    await _updateNotification(steps: steps, elapsed: elapsed);
-  }
-
-  Future<void> _updateNotification({
-    int steps = 0,
-    String elapsed = '0s',
+  Future<void> _updateForegroundNotification({
+    int sessionCount = 0,
+    int totalSteps = 0,
   }) async {
+    if (!_initialized) return;
     const androidDetails = AndroidNotificationDetails(
       _notificationChannelId,
       _notificationChannelName,
@@ -92,22 +95,117 @@ class BackgroundRecordingService {
       ongoing: true,
       onlyAlertOnce: true,
     );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: false,
-      presentBadge: false,
-      presentSound: false,
-    );
     await _notifications.show(
-      _notificationId,
-      'Recording...',
-      'Steps: $steps | Time: $elapsed',
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      _foregroundNotificationId,
+      'GoalKeeper',
+      sessionCount > 0
+          ? '$sessionCount habit${sessionCount > 1 ? 's' : ''} · $totalSteps steps total'
+          : 'No active recordings',
+      NotificationDetails(android: androidDetails),
     );
   }
 
-  Future<void> stop() async {
+  void addSession({
+    required String habitId,
+    required String habitName,
+    required String unit,
+    required int steps,
+    required double distanceMeters,
+    required String elapsed,
+  }) {
+    _ensureForegroundService();
+    _postHabitNotification(
+      habitId: habitId,
+      habitName: habitName,
+      unit: unit,
+      steps: steps,
+      distanceMeters: distanceMeters,
+      elapsed: elapsed,
+    );
+  }
+
+  void updateSession({
+    required String habitId,
+    required String habitName,
+    required String unit,
+    required int steps,
+    required double distanceMeters,
+    required String elapsed,
+    required int totalSessions,
+    required int totalSteps,
+  }) {
+    _postHabitNotification(
+      habitId: habitId,
+      habitName: habitName,
+      unit: unit,
+      steps: steps,
+      distanceMeters: distanceMeters,
+      elapsed: elapsed,
+    );
+    _updateForegroundNotification(
+      sessionCount: totalSessions,
+      totalSteps: totalSteps,
+    );
+  }
+
+  void removeSession({
+    required String habitId,
+    required int remainingSessions,
+    required int totalSteps,
+  }) {
+    _notifications.cancel(_notificationId(habitId));
+    if (remainingSessions > 0) {
+      _updateForegroundNotification(
+        sessionCount: remainingSessions,
+        totalSteps: totalSteps,
+      );
+    } else {
+      _stop();
+    }
+  }
+
+  int _notificationId(String habitId) => 1000 + habitId.hashCode.abs() % 900000;
+
+  Future<void> _postHabitNotification({
+    required String habitId,
+    required String habitName,
+    required String unit,
+    required int steps,
+    required double distanceMeters,
+    required String elapsed,
+  }) async {
+    if (!_initialized) return;
+
+    final progress = _progressText(steps, distanceMeters, unit);
+
+    const androidDetails = AndroidNotificationDetails(
+      _notificationChannelId,
+      _notificationChannelName,
+      channelDescription: _notificationChannelDesc,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      ongoing: true,
+      onlyAlertOnce: true,
+      showProgress: true,
+      indeterminate: false,
+    );
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+
+    await _notifications.show(
+      _notificationId(habitId),
+      habitName,
+      '$progress | $elapsed',
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
+    );
+  }
+
+  Future<void> _stop() async {
     final service = FlutterBackgroundService();
     service.invoke('stopService');
-    await _notifications.cancel(_notificationId);
+    await _notifications.cancel(_foregroundNotificationId);
   }
 }
