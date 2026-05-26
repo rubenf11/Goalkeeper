@@ -1,13 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../data/models/moment_photo.dart';
 import '../data/models/habit.dart';
+import '../data/models/accelerometer_tracking_data.dart';
 import 'package:provider/provider.dart';
 import 'add_entry_screen.dart';
 import '../services/habit_service.dart';
 import '../services/moment_service.dart';
+import '../services/accelerometer_tracking_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../widgets/moment_details_dialog.dart';
+import '../widgets/accelerometer_confirmation_sheet.dart';
 import '../services/entry_service.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
@@ -19,6 +23,7 @@ class HabitDetailsScreen extends StatefulWidget {
   final int streak;
   final Timestamp created_at;
   final Frequency frequency;
+  final bool accelerometer;
 
   const HabitDetailsScreen({
     super.key,
@@ -30,6 +35,7 @@ class HabitDetailsScreen extends StatefulWidget {
     required this.streak,
     required this.created_at,
     required this.frequency,
+    this.accelerometer = false,
   });
 
   @override
@@ -47,18 +53,45 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   String _selectedChartMode = 'Sum';
   late final Stream<Map<String, num>> _chartStream;
 
+  final AccelerometerTrackingService _trackingService =
+      AccelerometerTrackingService();
+  bool _isTracking = false;
+
   @override
   void initState() {
     super.initState();
-    _chartStream = context.read<HabitService>().watchDailyProgress(widget.habitId);
+    _chartStream = context.read<HabitService>().watchDailyProgress(
+      widget.habitId,
+    );
+
+    _trackingService.trackingData.addListener(_onTrackingDataChanged);
 
     // Recalculate stats once when opening the habit details page to ensure
     // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HabitService>().recalculateHabitStats(widget.habitId).catchError((e, st) {
-        print('recalculateHabitStats (onOpen) ERROR for ${widget.habitId}: $e');
-        print(st);
-      });
+      context
+          .read<HabitService>()
+          .recalculateHabitStats(widget.habitId)
+          .catchError((e, st) {
+            print(
+              'recalculateHabitStats (onOpen) ERROR for ${widget.habitId}: $e',
+            );
+            print(st);
+          });
+    });
+  }
+
+  @override
+  void dispose() {
+    _trackingService.trackingData.removeListener(_onTrackingDataChanged);
+    _trackingService.dispose();
+    super.dispose();
+  }
+
+  void _onTrackingDataChanged() {
+    if (!mounted) return;
+    setState(() {
+      _isTracking = _trackingService.trackingData.value.isRecording;
     });
   }
 
@@ -86,7 +119,10 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             TextButton(
               child: Text(
                 "Cancel",
-                style: TextStyle(color: textColorLight, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: textColorLight,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               onPressed: () {
                 Navigator.of(context).pop();
@@ -97,35 +133,43 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 backgroundColor: primaryColor,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadiusGeometry.circular(8)
+                  borderRadius: BorderRadiusGeometry.circular(8),
                 ),
               ),
               child: Text(
                 isCurrentlyDone ? "Continue" : "Confirm",
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               onPressed: () async {
                 Navigator.of(context).pop();
-                final error = await context.read<HabitService>().setHabitCompletionStatus(
-                  habitId: widget.habitId,
-                  isDone: !isCurrentlyDone,
-                );
+                final error = await context
+                    .read<HabitService>()
+                    .setHabitCompletionStatus(
+                      habitId: widget.habitId,
+                      isDone: !isCurrentlyDone,
+                    );
 
                 if (!mounted) return;
 
-                if(!isCurrentlyDone) {
+                if (!isCurrentlyDone) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(error ?? 'Habit marked as completed!'),
-                      backgroundColor: error == null ? Colors.green : Colors.red,
+                      backgroundColor: error == null
+                          ? Colors.green
+                          : Colors.red,
                     ),
                   );
-                }
-                else {
+                } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(error ?? 'Habit reativated!'),
-                      backgroundColor: error == null ? Colors.green : Colors.red,
+                      backgroundColor: error == null
+                          ? Colors.green
+                          : Colors.red,
                     ),
                   );
                 }
@@ -133,7 +177,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             ),
           ],
         );
-      }
+      },
     );
   }
 
@@ -153,11 +197,14 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         String periodPlural;
         bool isDone = habitData?.isDone ?? false;
 
-        double progressPercentage = widget.goal > 0 ? currentProgress / widget.goal : 0;
+        double progressPercentage = widget.goal > 0
+            ? currentProgress / widget.goal
+            : 0;
         if (progressPercentage > 1.0) progressPercentage = 1.0;
-        
+
         DateTime date = widget.created_at.toDate();
-        String habitDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+        String habitDate =
+            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
         switch (widget.frequency) {
           case Frequency.daily:
@@ -178,11 +225,15 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             break;
         }
 
-        final streakPeriodLabel = currentStreak == 1 ? periodSingular : periodPlural;
-        final highestStreakPeriodLabel =
-            currentHighestStreak == 1 ? periodSingular : periodPlural;
-        final completedPeriodLabel =
-            currentDaysCompleted == 1 ? periodSingular : periodPlural;
+        final streakPeriodLabel = currentStreak == 1
+            ? periodSingular
+            : periodPlural;
+        final highestStreakPeriodLabel = currentHighestStreak == 1
+            ? periodSingular
+            : periodPlural;
+        final completedPeriodLabel = currentDaysCompleted == 1
+            ? periodSingular
+            : periodPlural;
         final completedTitle =
             '${completedPeriodLabel[0].toUpperCase()}${completedPeriodLabel.substring(1)} Completed';
 
@@ -193,10 +244,21 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_new, color: textColorDark, size: 20),
+              icon: Icon(
+                Icons.arrow_back_ios_new,
+                color: textColorDark,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Text(widget.name, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
+            title: Text(
+              widget.name,
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
             actions: [
               PopupMenuButton(
                 icon: Icon(Icons.more_vert, color: textColorDark),
@@ -217,8 +279,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                         ),
                       ),
                     );
-                  }
-                  else if (choice == 'mark_completed') {
+                  } else if (choice == 'mark_completed') {
                     _showConfirmationDialog(isDone);
                   }
                 },
@@ -227,7 +288,11 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     value: 'add_entry',
                     child: Row(
                       children: [
-                        Icon(Icons.add_circle_outline, color: Colors.black, size: 20),
+                        Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                         SizedBox(width: 12),
                         Text("Add Entry"),
                       ],
@@ -237,7 +302,11 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     value: 'mark_completed',
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_outline, color: Colors.black, size: 20),
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Text(isDone ? 'Continue Habit' : 'Mark as completed'),
                       ],
@@ -252,10 +321,19 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             child: Column(
               children: [
                 _buildCircularProgress(currentProgress, progressPercentage),
+                if (widget.accelerometer) ...[
+                  const SizedBox(height: 24),
+                  _buildRecordingSection(),
+                ],
                 const SizedBox(height: 32),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard("STREAK", '$currentStreak $streakPeriodLabel')),
+                    Expanded(
+                      child: _buildStatCard(
+                        "STREAK",
+                        '$currentStreak $streakPeriodLabel',
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     Expanded(child: _buildStatCard("Created at", habitDate)),
                   ],
@@ -263,9 +341,19 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildStatCard("HIGHEST STREAK", '$currentHighestStreak $highestStreakPeriodLabel')),
+                    Expanded(
+                      child: _buildStatCard(
+                        "HIGHEST STREAK",
+                        '$currentHighestStreak $highestStreakPeriodLabel',
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildStatCard(completedTitle, '$currentDaysCompleted')),
+                    Expanded(
+                      child: _buildStatCard(
+                        completedTitle,
+                        '$currentDaysCompleted',
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -281,7 +369,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       ),
                     ),
 
-                    if (_selectedPeriod != "Daily")...[
+                    if (_selectedPeriod != "Daily") ...[
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment<String>(
@@ -308,7 +396,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           visualDensity: VisualDensity.compact,
                         ),
                       ),
-                    ]
+                    ],
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -317,12 +405,305 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 _buildActiveChart(widget.habitId, _selectedChartMode),
                 const SizedBox(height: 24),
                 _buildDailyMomentsSection(),
-
               ],
             ),
           ),
         );
+      },
+    );
+  }
+
+  Future<void> _startRecording() async {
+    if (!await AccelerometerTrackingService.hasPermission()) {
+      final granted = await AccelerometerTrackingService.requestPermission();
+      if (!granted) {
+        if (!mounted) return;
+        final openSettings = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Permission Required'),
+            content: const Text(
+              'Step tracking needs activity recognition permission. '
+              'Please enable it in Settings.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+        if (openSettings == true) {
+          await openAppSettings();
+        }
+        return;
       }
+    }
+    if (!mounted) return;
+    _trackingService.startRecording();
+    setState(() {});
+  }
+
+  Future<void> _stopRecording() async {
+    _trackingService.stopRecording();
+    final data = _trackingService.trackingData.value;
+    setState(() {});
+
+    if (!mounted) return;
+
+    final result = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => AccelerometerConfirmationSheet(
+        data: data,
+        habitName: widget.name,
+        habitUnit: widget.unit,
+        habitId: widget.habitId,
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    final entryService = context.read<EntryService>();
+    final error = await entryService.addEntrytoHabit(
+      habitId: widget.habitId,
+      amount: result,
+    );
+
+    if (!mounted) return;
+
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Entry saved from recording!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      context.read<HabitService>().recalculateHabitStats(widget.habitId);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildRecordingSection() {
+    return ValueListenableBuilder<AccelerometerTrackingData>(
+      valueListenable: _trackingService.trackingData,
+      builder: (context, data, child) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _isTracking
+                ? primaryColor.withValues(alpha: 0.05)
+                : cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _isTracking
+                  ? primaryColor.withValues(alpha: 0.3)
+                  : Colors.grey.shade200,
+            ),
+          ),
+          child: _isTracking
+              ? _buildActiveRecording(data)
+              : _buildIdleRecording(),
+        );
+      },
+    );
+  }
+
+  Widget _buildIdleRecording() {
+    return InkWell(
+      onTap: _startRecording,
+      borderRadius: BorderRadius.circular(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.sensors,
+              color: Color(0xFF006B59),
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Auto-track with accelerometer',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: textColorDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap to start counting steps and distance',
+                  style: TextStyle(color: textColorLight, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                SizedBox(width: 4),
+                Text(
+                  'Record',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveRecording(AccelerometerTrackingData data) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recording...',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: primaryColor,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    data.elapsedFormatted,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRecordingStat(
+                '${data.steps}',
+                'Steps',
+                Icons.directions_walk,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildRecordingStat(
+                data.distanceFormatted,
+                'Distance',
+                Icons.straighten,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _stopRecording,
+            icon: const Icon(Icons.stop, color: Colors.white),
+            label: const Text(
+              'Stop Recording',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingStat(String value, String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: primaryColor, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: textColorDark,
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 12, color: textColorLight)),
+        ],
+      ),
     );
   }
 
@@ -345,8 +726,22 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$progress', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: textColorDark)),
-              Text("/ ${widget.goal} ${widget.unit}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColorLight)),
+              Text(
+                '$progress',
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: textColorDark,
+                ),
+              ),
+              Text(
+                "/ ${widget.goal} ${widget.unit}",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textColorLight,
+                ),
+              ),
             ],
           ),
         ],
@@ -360,13 +755,34 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColorLight, letterSpacing: 1)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: textColorLight,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: large ? 20 : 17, fontWeight: FontWeight.bold, color: textColorDark)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: large ? 20 : 17,
+              fontWeight: FontWeight.bold,
+              color: textColorDark,
+            ),
+          ),
         ],
       ),
     );
@@ -379,13 +795,29 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Captured Moments", style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 18)),
-            Text("View Gallery", style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 14)),
+            Text(
+              "Captured Moments",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: textColorDark,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              "View Gallery",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 24),
         StreamBuilder<List<MomentPhoto>>(
-          stream: context.read<MomentService>().watchHabitMoments(widget.habitId),
+          stream: context.read<MomentService>().watchHabitMoments(
+            widget.habitId,
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
@@ -426,12 +858,16 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                      builder: (context) =>
+                          const Center(child: CircularProgressIndicator()),
                     );
 
                     final entryService = context.read<EntryService>();
 
-                    final entry = await entryService.getEntryByImageUrl(widget.habitId, photo.imageUrl);
+                    final entry = await entryService.getEntryByImageUrl(
+                      widget.habitId,
+                      photo.imageUrl,
+                    );
 
                     if (context.mounted) Navigator.pop(context);
 
@@ -465,7 +901,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           errorBuilder: (context, error, stackTrace) {
                             return const ColoredBox(
                               color: Color(0xFFE2E8F0),
-                              child: Center(child: Icon(Icons.broken_image_outlined)),
+                              child: Center(
+                                child: Icon(Icons.broken_image_outlined),
+                              ),
                             );
                           },
                         ),
@@ -516,9 +954,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
         Text(
           "Activity Overview",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            color: textColorDark, 
-            fontSize: 16
+            fontWeight: FontWeight.bold,
+            color: textColorDark,
+            fontSize: 16,
           ),
         ),
         const SizedBox(height: 16),
@@ -531,19 +969,19 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
-                offset: const Offset(0, 4), 
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: StreamBuilder<Map<String,num>>(
+          child: StreamBuilder<Map<String, num>>(
             stream: _chartStream,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    "Error while loading stats data", 
-                    style: TextStyle(color: textColorLight)
-                  )
+                    "Error while loading stats data",
+                    style: TextStyle(color: textColorLight),
+                  ),
                 );
               }
 
@@ -560,7 +998,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
               final DateTime now = DateTime.now();
               final List<DateTime> last7Days = List.generate(
-                7, 
+                7,
                 (index) => now.subtract(Duration(days: 6 - index)),
               );
 
@@ -568,28 +1006,43 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: last7Days.map((date) {
-                  String dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                  String dateStr =
+                      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
                   num progress = progressMap[dateStr] ?? 0;
-                  double percentage = widget.goal > 0.0 ? (progress / widget.goal) : 0.0;
+                  double percentage = widget.goal > 0.0
+                      ? (progress / widget.goal)
+                      : 0.0;
                   if (percentage > 1) percentage = 1;
 
-                  final List<String> weekdays = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                  final List<String> weekdays = [
+                    '',
+                    'Mon',
+                    'Tue',
+                    'Wed',
+                    'Thu',
+                    'Fri',
+                    'Sat',
+                    'Sun',
+                  ];
                   String dayLabel = weekdays[date.weekday];
 
-                  bool isToday = date.day == now.day && 
-                                 date.month == now.month && 
-                                 date.year == now.year;
-                  
+                  bool isToday =
+                      date.day == now.day &&
+                      date.month == now.month &&
+                      date.year == now.year;
+
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         progress.toInt().toString(),
                         style: TextStyle(
-                          fontSize: 14, 
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                          color: isToday ? primaryColor : textColorLight
+                          fontSize: 14,
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isToday ? primaryColor : textColorLight,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -606,7 +1059,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           curve: Curves.easeInOut,
                           height: 120 * percentage,
                           decoration: BoxDecoration(
-                            color: percentage >= 1.0 ? Colors.blue : Colors.red.withValues(alpha: 0.4),
+                            color: percentage >= 1.0
+                                ? Colors.blue
+                                : Colors.red.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
@@ -616,13 +1071,15 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                         dayLabel,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: isToday ? primaryColor : textColorDark,
                         ),
                       ),
                     ],
                   );
-                }).toList(),    
+                }).toList(),
               );
             },
           ),
@@ -655,14 +1112,14 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   color: isSelected ? cardColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        )
-                      ]
-                    : [],
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
                 ),
                 child: Text(
                   period,
@@ -686,14 +1143,20 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       case 'Weekly':
         return _buildLineChartSection(
           title: "Weekly Analytics",
-          stream: context.read<HabitService>().watchWeeklyProgress(habitId, mode: mode),
+          stream: context.read<HabitService>().watchWeeklyProgress(
+            habitId,
+            mode: mode,
+          ),
           periodType: "Weekly",
           mode: _selectedChartMode,
         );
       case 'Monthly':
         return _buildLineChartSection(
           title: "Monthly Analytics",
-          stream: context.read<HabitService>().watchMonthlyProgress(habitId, mode: mode),
+          stream: context.read<HabitService>().watchMonthlyProgress(
+            habitId,
+            mode: mode,
+          ),
           periodType: "Monthly",
           mode: _selectedChartMode,
         );
@@ -719,7 +1182,11 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       children: [
         Text(
           periodType == 'Daily' ? title : '$title ($mode)',
-          style: TextStyle(fontWeight: FontWeight.bold, color: textColorDark, fontSize: 16),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: textColorDark,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 24),
         Container(
@@ -730,38 +1197,54 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             builder: (context, snapshot) {
               final progressMap = snapshot.data ?? {};
               final DateTime now = DateTime.now();
-              
+
               List<String> sortedKeys = [];
               List<FlSpot> spots = [];
 
               if (periodType == 'Daily') {
                 for (int i = 0; i < 7; i++) {
                   final date = now.subtract(Duration(days: 6 - i));
-                  final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                  final dateStr =
+                      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
                   sortedKeys.add(dateStr);
-                  spots.add(FlSpot(i.toDouble(), (progressMap[dateStr] ?? 0).toDouble()));
+                  spots.add(
+                    FlSpot(
+                      i.toDouble(),
+                      (progressMap[dateStr] ?? 0).toDouble(),
+                    ),
+                  );
                 }
               } else {
                 sortedKeys = progressMap.keys.toList()..sort();
                 for (int i = 0; i < sortedKeys.length; i++) {
-                  spots.add(FlSpot(i.toDouble(), progressMap[sortedKeys[i]]!.toDouble()));
+                  spots.add(
+                    FlSpot(
+                      i.toDouble(),
+                      progressMap[sortedKeys[i]]!.toDouble(),
+                    ),
+                  );
                 }
               }
 
-              if (sortedKeys.isEmpty) return const Center(child: Text("Sem dados suficientes"));
+              if (sortedKeys.isEmpty)
+                return const Center(child: Text("Sem dados suficientes"));
 
-              final double maxXD = sortedKeys.length > 1 ? (sortedKeys.length - 1).toDouble() : 1.0;
+              final double maxXD = sortedKeys.length > 1
+                  ? (sortedKeys.length - 1).toDouble()
+                  : 1.0;
 
               double highestValue = 0;
               for (var spot in spots) {
                 if (spot.y > highestValue) highestValue = spot.y;
               }
-              
+
               double targetMaxY = highestValue;
 
-              if (targetMaxY == 0) targetMaxY = 10; 
+              if (targetMaxY == 0) targetMaxY = 10;
 
-              double yInterval = mode == 'Average' ? (targetMaxY / 4) : (targetMaxY / 4).ceilToDouble();
+              double yInterval = mode == 'Average'
+                  ? (targetMaxY / 4)
+                  : (targetMaxY / 4).ceilToDouble();
               if (yInterval == 0) yInterval = 1;
 
               return LineChart(
@@ -773,30 +1256,43 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
                       getTooltipColor: (spot) => primaryColor,
-                      getTooltipItems: (touchedSpots) => touchedSpots.map((s) => LineTooltipItem(
-                        mode == 'Average' 
-                            ? '${s.y.toStringAsFixed(1)}' 
-                            : '${s.y.toInt()}',
-                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      )).toList(),
+                      getTooltipItems: (touchedSpots) => touchedSpots
+                          .map(
+                            (s) => LineTooltipItem(
+                              mode == 'Average'
+                                  ? '${s.y.toStringAsFixed(1)}'
+                                  : '${s.y.toInt()}',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => FlLine(color: backgroundColor, strokeWidth: 1),
+                    getDrawingHorizontalLine: (value) =>
+                        FlLine(color: backgroundColor, strokeWidth: 1),
                   ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         interval: yInterval,
                         reservedSize: 35,
                         getTitlesWidget: (value, meta) {
-                          if (value == targetMaxY + (targetMaxY * 0.1) || (mode != 'Average' && value % 1 != 0)) {
+                          if (value == targetMaxY + (targetMaxY * 0.1) ||
+                              (mode != 'Average' && value % 1 != 0)) {
                             return const SizedBox();
                           }
                           return Padding(
@@ -804,8 +1300,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                             child: Text(
                               value.toInt().toString(),
                               style: TextStyle(
-                                color: textColorLight, 
-                                fontSize: 10, 
+                                color: textColorLight,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               ),
                               textAlign: TextAlign.right,
@@ -822,35 +1318,79 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                         getTitlesWidget: (value, meta) {
                           if (value % 1 != 0) return const SizedBox();
                           final index = value.toInt();
-                          if (index < 0 || index >= sortedKeys.length) return const SizedBox();
-                          
+                          if (index < 0 || index >= sortedKeys.length)
+                            return const SizedBox();
+
                           String label = sortedKeys[index];
                           bool isToday = false;
                           try {
                             if (periodType == 'Monthly') {
                               final parts = label.split('-');
                               final month = int.parse(parts[1]);
-                              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                              const months = [
+                                'Jan',
+                                'Feb',
+                                'Mar',
+                                'Apr',
+                                'May',
+                                'Jun',
+                                'Jul',
+                                'Aug',
+                                'Sep',
+                                'Oct',
+                                'Nov',
+                                'Dec',
+                              ];
                               label = months[month - 1];
-                            } 
-                            else if (periodType == 'Weekly') {
+                            } else if (periodType == 'Weekly') {
                               final parts = label.split('-');
-                              final startDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-                              final endDate = startDate.add(const Duration(days: 6));
-                              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                              label = startDate.month == endDate.month 
-                                  ? "${startDate.day}-${endDate.day} ${months[startDate.month-1]}"
-                                  : "${startDate.day} ${months[startDate.month-1]}-${endDate.day} ${months[endDate.month-1]}";
-                            }
-                            else {
+                              final startDate = DateTime(
+                                int.parse(parts[0]),
+                                int.parse(parts[1]),
+                                int.parse(parts[2]),
+                              );
+                              final endDate = startDate.add(
+                                const Duration(days: 6),
+                              );
+                              const months = [
+                                'Jan',
+                                'Feb',
+                                'Mar',
+                                'Apr',
+                                'May',
+                                'Jun',
+                                'Jul',
+                                'Aug',
+                                'Sep',
+                                'Oct',
+                                'Nov',
+                                'Dec',
+                              ];
+                              label = startDate.month == endDate.month
+                                  ? "${startDate.day}-${endDate.day} ${months[startDate.month - 1]}"
+                                  : "${startDate.day} ${months[startDate.month - 1]}-${endDate.day} ${months[endDate.month - 1]}";
+                            } else {
                               final parts = label.split('-');
-                              final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-                              const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                              final date = DateTime(
+                                int.parse(parts[0]),
+                                int.parse(parts[1]),
+                                int.parse(parts[2]),
+                              );
+                              const weekdays = [
+                                'Mon',
+                                'Tue',
+                                'Wed',
+                                'Thu',
+                                'Fri',
+                                'Sat',
+                                'Sun',
+                              ];
                               label = weekdays[date.weekday - 1];
-                              isToday = date.day == now.day && date.month == now.month;
+                              isToday =
+                                  date.day == now.day &&
+                                  date.month == now.month;
                             }
-                          } catch (e) {
-                          }
+                          } catch (e) {}
                           return Padding(
                             padding: const EdgeInsets.only(top: 10.0),
                             child: Text(
@@ -858,7 +1398,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                               style: TextStyle(
                                 color: isToday ? primaryColor : textColorLight,
                                 fontSize: periodType == 'Week' ? 9 : 11,
-                                fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                                fontWeight: isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.w600,
                               ),
                             ),
                           );
@@ -875,17 +1417,21 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                       isStrokeCapRound: true,
                       dotData: FlDotData(
                         show: true,
-                        getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                          radius: 4,
-                          color: Colors.white,
-                          strokeWidth: 3,
-                          strokeColor: primaryColor,
-                        ),
+                        getDotPainter: (spot, percent, bar, index) =>
+                            FlDotCirclePainter(
+                              radius: 4,
+                              color: Colors.white,
+                              strokeWidth: 3,
+                              strokeColor: primaryColor,
+                            ),
                       ),
                       belowBarData: BarAreaData(
                         show: true,
                         gradient: LinearGradient(
-                          colors: [primaryColor.withValues(alpha: 0.3), primaryColor.withValues(alpha: 0.0)],
+                          colors: [
+                            primaryColor.withValues(alpha: 0.3),
+                            primaryColor.withValues(alpha: 0.0),
+                          ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),

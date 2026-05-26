@@ -9,7 +9,9 @@ class HabitCard extends StatelessWidget {
   final int progress;
   final String unit;
   final int streak;
+  final bool accelerometer;
   final VoidCallback? onTap;
+  final VoidCallback? onRecordTap;
 
   const HabitCard({
     Key? key,
@@ -19,7 +21,9 @@ class HabitCard extends StatelessWidget {
     required this.progress,
     required this.unit,
     required this.streak,
+    this.accelerometer = false,
     this.onTap,
+    this.onRecordTap,
   }) : super(key: key);
 
   @override
@@ -80,14 +84,21 @@ class HabitCard extends StatelessWidget {
                       ),
                       if (streak > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.local_fire_department, color: Colors.orange, size: 14),
+                              const Icon(
+                                Icons.local_fire_department,
+                                color: Colors.orange,
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 '$streak',
@@ -98,6 +109,26 @@ class HabitCard extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      if (accelerometer)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: InkWell(
+                            onTap: onRecordTap,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.sensors,
+                                color: Color(0xFF006B59),
+                                size: 16,
+                              ),
+                            ),
                           ),
                         ),
                     ],

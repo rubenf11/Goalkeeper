@@ -41,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _activeHabitsStream = context.read<HabitService>().watchCurrentUserActiveHabits();
+    _activeHabitsStream = context
+        .read<HabitService>()
+        .watchCurrentUserActiveHabits();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<HabitService>().refreshAllHabits();
@@ -75,8 +77,12 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(left: 16.0),
           child: CircleAvatar(
             backgroundColor: primaryColor.withValues(alpha: 0.2),
-            backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-            child: user?.photoURL == null ? Icon(Icons.person, color: primaryColor) : null,
+            backgroundImage: user?.photoURL != null
+                ? NetworkImage(user!.photoURL!)
+                : null,
+            child: user?.photoURL == null
+                ? Icon(Icons.person, color: primaryColor)
+                : null,
           ),
         ),
 
@@ -94,15 +100,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: StreamBuilder<Map<String, dynamic>?>(
-          stream: user == null ? Stream.value(null) : _userService.watchCurrentUserProfile(),
+          stream: user == null
+              ? Stream.value(null)
+              : _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
             final userData = userSnapshot.data;
-            final String displayName = userData?['name'] as String? ?? getFirstName();
+            final String displayName =
+                userData?['name'] as String? ?? getFirstName();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,30 +156,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
 
                       final habits = snapshot.data ?? [];
-                      final activeHabits = habits.where((habit) => !habit.isDone).toList();
+                      final activeHabits = habits
+                          .where((habit) => !habit.isDone)
+                          .toList();
                       final progressCards = <Widget>[
-                        if (activeHabits.any((habit) => habit.frequency == Frequency.daily))
+                        if (activeHabits.any(
+                          (habit) => habit.frequency == Frequency.daily,
+                        ))
                           _buildProgressCard(
                             title: 'Daily Progress',
                             habits: activeHabits,
                             frequency: Frequency.daily,
                             typeLabel: 'daily',
                           ),
-                        if (activeHabits.any((habit) => habit.frequency == Frequency.weekly))
+                        if (activeHabits.any(
+                          (habit) => habit.frequency == Frequency.weekly,
+                        ))
                           _buildProgressCard(
                             title: 'Weekly Progress',
                             habits: activeHabits,
                             frequency: Frequency.weekly,
                             typeLabel: 'weekly',
                           ),
-                        if (activeHabits.any((habit) => habit.frequency == Frequency.monthly))
+                        if (activeHabits.any(
+                          (habit) => habit.frequency == Frequency.monthly,
+                        ))
                           _buildProgressCard(
                             title: 'Monthly Progress',
                             habits: activeHabits,
                             frequency: Frequency.monthly,
                             typeLabel: 'monthly',
                           ),
-                        if (activeHabits.any((habit) => habit.frequency == Frequency.yearly))
+                        if (activeHabits.any(
+                          (habit) => habit.frequency == Frequency.yearly,
+                        ))
                           _buildProgressCard(
                             title: 'Yearly Progress',
                             habits: activeHabits,
@@ -274,25 +291,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             progress: habit.progress,
                             unit: habit.unit,
                             streak: habit.streak,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HabitDetailsScreen(
-                                    habitId: habit.id,
-                                    name: habit.name,
-                                    goal: habit.goal,
-                                    progress: habit.progress,
-                                    unit: habit.unit,
-                                    streak: habit.streak,
-                                    created_at: Timestamp.fromDate(
-                                      habit.createdAt ?? DateTime.now(),
-                                    ),
-                                    frequency: habit.frequency,
-                                  ),
-                                ),
-                              );
-                            },
+                            accelerometer: habit.accelerometer,
+                            onTap: () => _navigateToDetails(habit),
+                            onRecordTap: () => _navigateToDetails(habit),
                           );
                         },
                       );
@@ -306,13 +307,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _navigateToDetails(Habit habit) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HabitDetailsScreen(
+          habitId: habit.id,
+          name: habit.name,
+          goal: habit.goal,
+          progress: habit.progress,
+          unit: habit.unit,
+          streak: habit.streak,
+          created_at: Timestamp.fromDate(habit.createdAt ?? DateTime.now()),
+          frequency: habit.frequency,
+          accelerometer: habit.accelerometer,
+        ),
+      ),
+    );
+  }
+
   Widget _buildProgressCard({
     required String title,
     required List<Habit> habits,
     required Frequency frequency,
     required String typeLabel,
   }) {
-    final filteredHabits = habits.where((h) => h.frequency == frequency).toList();
+    final filteredHabits = habits
+        .where((h) => h.frequency == frequency)
+        .toList();
     final int total = filteredHabits.length;
     final int completed = filteredHabits.where((h) => h.goalReached).length;
     final double percentage = total > 0 ? completed / total : 0.0;
@@ -373,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 32),
           Text(
-            total > 0 
+            total > 0
                 ? "$completed of $total $typeLabel habits completed"
                 : "No $typeLabel habits created.",
             textAlign: TextAlign.center,

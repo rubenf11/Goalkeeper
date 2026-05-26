@@ -28,9 +28,12 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   final Color _textColorLight = const Color(0xFF64748B);
   final List<HabitCategoryOption> _categories = HabitCategoryCatalog.options;
 
+  final List<String> _accelerometerUnits = ['steps', 'meters', 'km', 'miles'];
+
   String _selectedCategory = 'Health & Fitness';
   Frequency _selectedFrequency = Frequency.daily;
   bool _accelerometerEnabled = false;
+  String _selectedAccelUnit = 'steps';
   bool _isSubmitting = false;
 
   @override
@@ -92,6 +95,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _selectedCategory = _categories.first.name;
       _selectedFrequency = Frequency.daily;
       _accelerometerEnabled = false;
+      _selectedAccelUnit = 'steps';
     });
 
     final Timestamp createdAt = createdHabit.createdAt == null
@@ -107,8 +111,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           progress: createdHabit.progress,
           unit: createdHabit.unit,
           streak: createdHabit.streak,
-              created_at: createdAt,
-              frequency: createdHabit.frequency,
+          created_at: createdAt,
+          frequency: createdHabit.frequency,
+          accelerometer: createdHabit.accelerometer,
         ),
       ),
     );
@@ -397,17 +402,39 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _unitController,
-                            textInputAction: TextInputAction.done,
-                            decoration: _inputDecoration('Times'),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter a unit.';
-                              }
-                              return null;
-                            },
-                          ),
+                          if (_accelerometerEnabled)
+                            DropdownButtonFormField<String>(
+                              value: _selectedAccelUnit,
+                              items: _accelerometerUnits
+                                  .map(
+                                    (u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedAccelUnit = value;
+                                    _unitController.text = value;
+                                  });
+                                }
+                              },
+                              decoration: _inputDecoration('steps'),
+                            )
+                          else
+                            TextFormField(
+                              controller: _unitController,
+                              textInputAction: TextInputAction.done,
+                              decoration: _inputDecoration('Times'),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a unit.';
+                                }
+                                return null;
+                              },
+                            ),
                         ],
                       ),
                     ),
@@ -456,6 +483,10 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                         onChanged: (value) {
                           setState(() {
                             _accelerometerEnabled = value;
+                            if (value) {
+                              _unitController.text = 'steps';
+                              _selectedAccelUnit = 'steps';
+                            }
                           });
                         },
                       ),
@@ -470,7 +501,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _primaryColor,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: _primaryColor.withValues(alpha: 0.55),
+                      disabledBackgroundColor: _primaryColor.withValues(
+                        alpha: 0.55,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),

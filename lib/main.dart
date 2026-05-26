@@ -9,19 +9,20 @@ import 'services/achievement_service.dart';
 import 'services/entry_service.dart';
 import 'services/habit_service.dart';
 import 'services/moment_service.dart';
+import 'services/background_recording_service.dart';
 import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+
+  await BackgroundRecordingService().initialize();
 
   runApp(
     MultiProvider(
@@ -44,10 +45,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'GoalKeeper',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Roboto',
-        primarySwatch: Colors.teal,
-      ),
+      theme: ThemeData(fontFamily: 'Roboto', primarySwatch: Colors.teal),
       home: const LoginScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),

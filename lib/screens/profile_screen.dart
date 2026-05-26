@@ -62,9 +62,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile picture updated.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
     } catch (e) {
       if (!mounted) {
         return;
@@ -122,10 +122,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
-                        : const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                        : const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                   ),
                 ),
               ),
@@ -168,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return SizedBox(
           height: 140,
           child: ListView.builder(
-            scrollDirection: Axis.horizontal, 
+            scrollDirection: Axis.horizontal,
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];
@@ -181,16 +187,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                      builder: (context) =>
+                          const Center(child: CircularProgressIndicator()),
                     );
 
                     final entryService = context.read<EntryService>();
 
                     final habitService = context.read<HabitService>();
 
-                    final entry = await entryService.getEntryByImageUrl(photo.habitId, photo.imageUrl);
+                    final entry = await entryService.getEntryByImageUrl(
+                      photo.habitId,
+                      photo.imageUrl,
+                    );
 
-                    final habit = await habitService.watchHabit(photo.habitId).first;
+                    final habit = await habitService
+                        .watchHabit(photo.habitId)
+                        .first;
 
                     if (context.mounted) Navigator.pop(context);
 
@@ -224,7 +236,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           errorBuilder: (context, error, stackTrace) {
                             return const ColoredBox(
                               color: Color(0xFFE2E8F0),
-                              child: Center(child: Icon(Icons.broken_image_outlined)),
+                              child: Center(
+                                child: Icon(Icons.broken_image_outlined),
+                              ),
                             );
                           },
                         ),
@@ -311,6 +325,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               progress: habit.progress,
               unit: habit.unit,
               streak: habit.streak,
+              accelerometer: habit.accelerometer,
               onTap: () {
                 Navigator.push(
                   context,
@@ -326,6 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         habit.createdAt ?? DateTime.now(),
                       ),
                       frequency: habit.frequency,
+                      accelerometer: habit.accelerometer,
                     ),
                   ),
                 );
@@ -344,7 +360,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, authSnapshot) {
         final currentUser = authSnapshot.data ?? _authService.currentUser;
 
-        if (authSnapshot.connectionState == ConnectionState.waiting && currentUser == null) {
+        if (authSnapshot.connectionState == ConnectionState.waiting &&
+            currentUser == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
@@ -353,7 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (currentUser == null) {
           return Scaffold(
             backgroundColor: backgroundColor,
-            body: const Center(child: Text('Please sign in to view your profile.')),
+            body: const Center(
+              child: Text('Please sign in to view your profile.'),
+            ),
           );
         }
 
@@ -361,8 +380,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           stream: _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
             final userData = userSnapshot.data;
-            final String? photoUrl = userData?['photoUrl'] as String? ?? currentUser.photoURL;
-            final String displayName = userData?['name'] as String? ?? currentUser.displayName ?? '??????';
+            final String? photoUrl =
+                userData?['photoUrl'] as String? ?? currentUser.photoURL;
+            final String displayName =
+                userData?['name'] as String? ??
+                currentUser.displayName ??
+                '??????';
             final String? username = userData?['username'] as String?;
 
             return Scaffold(
@@ -374,7 +397,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 surfaceTintColor: Colors.transparent,
                 title: Text(
                   'GoalKeeper',
-                  style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 actions: [
                   IconButton(
