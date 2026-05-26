@@ -12,8 +12,8 @@ import '../services/habit_service.dart';
 import '../services/moment_service.dart';
 import '../services/user_service.dart';
 import '../widgets/habit_card.dart';
+import 'gallery_screen.dart';
 import 'habit_details_screen.dart';
-import 'home_screen.dart';
 import '../services/entry_service.dart';
 import '../widgets/moment_details_dialog.dart';
 
@@ -380,13 +380,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           stream: _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
             final userData = userSnapshot.data;
-            final String? photoUrl =
-                userData?['photoUrl'] as String? ?? currentUser.photoURL;
-            final String displayName =
-                userData?['name'] as String? ??
-                currentUser.displayName ??
-                '??????';
-            final String? username = userData?['username'] as String?;
+            final String? photoUrl = userData?['photoUrl'] as String? ?? currentUser.photoURL;
+            final String displayName = userData?['name'] as String? ?? currentUser.displayName ?? '??????';
 
             return Scaffold(
               backgroundColor: backgroundColor,
@@ -429,17 +424,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: textColorDark,
                       ),
                     ),
-                    if (username != null && username.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '@$username',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: textColorLight,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -457,12 +441,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
+                                builder: (context) => GalleryScreen(userId: currentUser.uid),
                               ),
                             );
                           },
                           child: Text(
-                            'View all',
+                            'Show all',
                             style: TextStyle(
                               color: primaryColor,
                               fontWeight: FontWeight.w600,
