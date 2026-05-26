@@ -9,19 +9,6 @@ const int _foregroundNotificationId = 888;
 final FlutterLocalNotificationsPlugin _notifications =
     FlutterLocalNotificationsPlugin();
 
-String _progressText(int steps, double distanceMeters, String unit) {
-  switch (unit) {
-    case 'steps':
-      return '$steps steps';
-    case 'km':
-      return '${(distanceMeters / 1000).toStringAsFixed(2)} km';
-    case 'miles':
-      return '${(distanceMeters / 1609.34).toStringAsFixed(2)} mi';
-    default:
-      return '${distanceMeters.toStringAsFixed(1)} m';
-  }
-}
-
 class BackgroundRecordingService {
   static final BackgroundRecordingService _instance =
       BackgroundRecordingService._();
@@ -79,10 +66,7 @@ class BackgroundRecordingService {
     }
   }
 
-  Future<void> _updateForegroundNotification({
-    int sessionCount = 0,
-    int totalSteps = 0,
-  }) async {
+  Future<void> _updateForegroundNotification({int sessionCount = 0}) async {
     if (!_initialized) return;
     const androidDetails = AndroidNotificationDetails(
       _notificationChannelId,
@@ -99,7 +83,7 @@ class BackgroundRecordingService {
       _foregroundNotificationId,
       'GoalKeeper',
       sessionCount > 0
-          ? '$sessionCount habit${sessionCount > 1 ? 's' : ''} · $totalSteps steps total'
+          ? '$sessionCount habit${sessionCount > 1 ? 's' : ''} recording'
           : 'No active recordings',
       NotificationDetails(android: androidDetails),
     );
@@ -108,57 +92,37 @@ class BackgroundRecordingService {
   void addSession({
     required String habitId,
     required String habitName,
-    required String unit,
-    required int steps,
-    required double distanceMeters,
-    required String elapsed,
+    required String notificationBody,
   }) {
     _ensureForegroundService();
     _postHabitNotification(
       habitId: habitId,
       habitName: habitName,
-      unit: unit,
-      steps: steps,
-      distanceMeters: distanceMeters,
-      elapsed: elapsed,
+      notificationBody: notificationBody,
     );
   }
 
   void updateSession({
     required String habitId,
     required String habitName,
-    required String unit,
-    required int steps,
-    required double distanceMeters,
-    required String elapsed,
+    required String notificationBody,
     required int totalSessions,
-    required int totalSteps,
   }) {
     _postHabitNotification(
       habitId: habitId,
       habitName: habitName,
-      unit: unit,
-      steps: steps,
-      distanceMeters: distanceMeters,
-      elapsed: elapsed,
+      notificationBody: notificationBody,
     );
-    _updateForegroundNotification(
-      sessionCount: totalSessions,
-      totalSteps: totalSteps,
-    );
+    _updateForegroundNotification(sessionCount: totalSessions);
   }
 
   void removeSession({
     required String habitId,
     required int remainingSessions,
-    required int totalSteps,
   }) {
     _notifications.cancel(_notificationId(habitId));
     if (remainingSessions > 0) {
-      _updateForegroundNotification(
-        sessionCount: remainingSessions,
-        totalSteps: totalSteps,
-      );
+      _updateForegroundNotification(sessionCount: remainingSessions);
     } else {
       _stop();
     }
@@ -169,14 +133,9 @@ class BackgroundRecordingService {
   Future<void> _postHabitNotification({
     required String habitId,
     required String habitName,
-    required String unit,
-    required int steps,
-    required double distanceMeters,
-    required String elapsed,
+    required String notificationBody,
   }) async {
     if (!_initialized) return;
-
-    final progress = _progressText(steps, distanceMeters, unit);
 
     const androidDetails = AndroidNotificationDetails(
       _notificationChannelId,
@@ -198,7 +157,7 @@ class BackgroundRecordingService {
     await _notifications.show(
       _notificationId(habitId),
       habitName,
-      '$progress | $elapsed',
+      notificationBody,
       NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
   }

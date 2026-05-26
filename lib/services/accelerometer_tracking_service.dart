@@ -89,10 +89,7 @@ class AccelerometerTrackingService {
     BackgroundRecordingService().addSession(
       habitId: habitId,
       habitName: habitName,
-      unit: unit,
-      steps: 0,
-      distanceMeters: 0.0,
-      elapsed: '0s',
+      notificationBody: '0 steps | 0s',
     );
 
     if (_subscription == null) {
@@ -109,10 +106,11 @@ class AccelerometerTrackingService {
     final newData = <String, AccelerometerTrackingData>{};
 
     for (final session in _sessions.values) {
+      final elapsed = now.difference(session.startTime);
       final data = AccelerometerTrackingData(
         steps: session.stepCount,
         distanceMeters: session.stepCount * _strideLengthMeters,
-        elapsedTime: now.difference(session.startTime),
+        elapsedTime: elapsed,
         isRecording: true,
       );
       newData[session.habitId] = data;
@@ -120,12 +118,9 @@ class AccelerometerTrackingService {
       BackgroundRecordingService().updateSession(
         habitId: session.habitId,
         habitName: session.habitName,
-        unit: session.unit,
-        steps: session.stepCount,
-        distanceMeters: session.stepCount * _strideLengthMeters,
-        elapsed: data.elapsedFormatted,
+        notificationBody:
+            '${session.stepCount} steps | ${data.elapsedFormatted}',
         totalSessions: _sessions.length,
-        totalSteps: _totalSteps,
       );
     }
 
@@ -151,9 +146,6 @@ class AccelerometerTrackingService {
     }
   }
 
-  int get _totalSteps =>
-      _sessions.values.fold(0, (sum, s) => sum + s.stepCount);
-
   AccelerometerTrackingData? stopRecording(String habitId) {
     final session = _sessions.remove(habitId);
     if (session == null) return null;
@@ -165,12 +157,9 @@ class AccelerometerTrackingService {
       isRecording: false,
     );
 
-    final remainingSteps = _totalSteps;
-
     BackgroundRecordingService().removeSession(
       habitId: habitId,
       remainingSessions: _sessions.length,
-      totalSteps: remainingSteps,
     );
 
     final newData = Map<String, AccelerometerTrackingData>.from(allData.value);

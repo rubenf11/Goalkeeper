@@ -16,6 +16,7 @@ import 'gallery_screen.dart';
 import 'habit_details_screen.dart';
 import '../services/entry_service.dart';
 import '../services/accelerometer_tracking_service.dart';
+import '../services/chronometer_tracking_service.dart';
 import '../widgets/moment_details_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -37,6 +38,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final AccelerometerTrackingService _trackingService =
       AccelerometerTrackingService();
+  final ChronometerTrackingService _chronoTrackingService =
+      ChronometerTrackingService();
   bool _isUploadingPhoto = false;
   Set<String> _recordingHabitIds = {};
 
@@ -289,18 +292,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _recordingHabitIds = _trackingService.allData.value.keys.toSet();
+    _recordingHabitIds = {
+      ..._trackingService.allData.value.keys,
+      ..._chronoTrackingService.allData.value.keys,
+    };
     _trackingService.allData.addListener(_onRecordingChanged);
+    _chronoTrackingService.allData.addListener(_onRecordingChanged);
   }
 
   @override
   void dispose() {
     _trackingService.allData.removeListener(_onRecordingChanged);
+    _chronoTrackingService.allData.removeListener(_onRecordingChanged);
     super.dispose();
   }
 
   void _onRecordingChanged() {
-    final newIds = _trackingService.allData.value.keys.toSet();
+    final newIds = {
+      ..._trackingService.allData.value.keys,
+      ..._chronoTrackingService.allData.value.keys,
+    };
     if (newIds.length == _recordingHabitIds.length &&
         _recordingHabitIds.containsAll(newIds))
       return;
@@ -353,6 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               unit: habit.unit,
               streak: habit.streak,
               accelerometer: habit.accelerometer,
+              chronometer: habit.chronometer,
               isRecording: _recordingHabitIds.contains(habit.id),
               onTap: () {
                 Navigator.push(
@@ -370,6 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       frequency: habit.frequency,
                       accelerometer: habit.accelerometer,
+                      chronometer: habit.chronometer,
                     ),
                   ),
                 );

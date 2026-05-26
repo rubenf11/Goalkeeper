@@ -29,11 +29,16 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   final List<HabitCategoryOption> _categories = HabitCategoryCatalog.options;
 
   final List<String> _accelerometerUnits = ['steps', 'meters', 'km', 'miles'];
-  final List<String> _trackingOptions = ['Manual', 'Step Counter'];
+  final List<String> _trackingOptions = [
+    'Manual',
+    'Step Counter',
+    'Chronometer',
+  ];
 
   String _selectedCategory = 'Health & Fitness';
   Frequency _selectedFrequency = Frequency.daily;
   bool _accelerometerEnabled = false;
+  bool _chronometerEnabled = false;
   String _selectedAccelUnit = 'steps';
   String _selectedTracking = 'Manual';
   bool _isSubmitting = false;
@@ -67,6 +72,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       goal: roundedGoal,
       unit: _unitController.text,
       accelerometer: _accelerometerEnabled,
+      chronometer: _chronometerEnabled,
     );
 
     if (!mounted) {
@@ -98,6 +104,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _selectedCategory = _categories.first.name;
       _selectedFrequency = Frequency.daily;
       _accelerometerEnabled = false;
+      _chronometerEnabled = false;
       _selectedAccelUnit = 'steps';
       _selectedTracking = 'Manual';
     });
@@ -118,6 +125,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           created_at: createdAt,
           frequency: createdHabit.frequency,
           accelerometer: createdHabit.accelerometer,
+          chronometer: createdHabit.chronometer,
         ),
       ),
     );
@@ -344,9 +352,12 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                               setState(() {
                                 _selectedTracking = value;
                                 _accelerometerEnabled = value == 'Step Counter';
+                                _chronometerEnabled = value == 'Chronometer';
                                 if (_accelerometerEnabled) {
                                   _unitController.text = 'steps';
                                   _selectedAccelUnit = 'steps';
+                                } else if (_chronometerEnabled) {
+                                  _unitController.text = 'seconds';
                                 }
                               });
                             },
@@ -434,6 +445,13 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                                 }
                               },
                               decoration: _inputDecoration('steps'),
+                            )
+                          else if (_chronometerEnabled)
+                            TextFormField(
+                              controller: _unitController,
+                              enabled: false,
+                              decoration: _inputDecoration('seconds'),
+                              style: TextStyle(color: _textColorLight),
                             )
                           else
                             TextFormField(

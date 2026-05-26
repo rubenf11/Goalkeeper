@@ -42,6 +42,7 @@ class Habit {
     required this.goal,
     required this.unit,
     required this.accelerometer,
+    required this.chronometer,
     required this.progress,
     required this.goalReached,
     required this.streak,
@@ -60,6 +61,7 @@ class Habit {
   final double goal;
   final String unit;
   final bool accelerometer;
+  final bool chronometer;
   final double progress;
   final bool goalReached;
   final int streak;
@@ -78,6 +80,7 @@ class Habit {
     double? goal,
     String? unit,
     bool? accelerometer,
+    bool? chronometer,
     double? progress,
     bool? goalReached,
     int? streak,
@@ -96,6 +99,7 @@ class Habit {
       goal: goal ?? this.goal,
       unit: unit ?? this.unit,
       accelerometer: accelerometer ?? this.accelerometer,
+      chronometer: chronometer ?? this.chronometer,
       progress: progress ?? this.progress,
       goalReached: goalReached ?? this.goalReached,
       streak: streak ?? this.streak,
@@ -117,6 +121,7 @@ class Habit {
       'goal': goal,
       'unit': unit,
       'accelerometer': accelerometer,
+      'chronometer': chronometer,
       'progress': progress,
       'goal_reached': goalReached,
       'streak': streak,
@@ -145,6 +150,7 @@ class Habit {
       goal: (map['goal'] as num?)?.toDouble() ?? 0.0,
       unit: map['unit'] as String? ?? '',
       accelerometer: map['accelerometer'] as bool? ?? false,
+      chronometer: map['chronometer'] as bool? ?? false,
       progress: (map['progress'] as num?)?.toDouble() ?? 0.0,
       goalReached: map['goal_reached'] as bool? ?? false,
       streak: (map['streak'] as num?)?.toInt() ?? 0,

@@ -10,6 +10,7 @@ class HabitCard extends StatelessWidget {
   final String unit;
   final int streak;
   final bool accelerometer;
+  final bool chronometer;
   final bool isRecording;
   final VoidCallback? onTap;
   final VoidCallback? onRecordTap;
@@ -23,12 +24,24 @@ class HabitCard extends StatelessWidget {
     required this.unit,
     required this.streak,
     this.accelerometer = false,
+    this.chronometer = false,
     this.isRecording = false,
     this.onTap,
     this.onRecordTap,
   }) : super(key: key);
 
-  static String _formatNum(num value) {
+  static String _formatDuration(num seconds) {
+    final total = seconds.toInt().abs();
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final s = total % 60;
+    final two = (int n) => n.toString().padLeft(2, '0');
+    if (h > 0) return '${two(h)}:${two(m)}:${two(s)}';
+    return '${two(m)}:${two(s)}';
+  }
+
+  static String _formatNum(num value, {bool isDuration = false}) {
+    if (isDuration) return _formatDuration(value);
     final s = (value is double ? value : value.toDouble()).toStringAsFixed(2);
     if (s.contains('.')) {
       final trimmed = s.replaceAll(RegExp(r'0*$'), '');
@@ -37,6 +50,13 @@ class HabitCard extends StatelessWidget {
           : trimmed;
     }
     return s;
+  }
+
+  String get _progressText {
+    if (chronometer) {
+      return '${_formatDuration(progress)} / ${_formatDuration(goal)}';
+    }
+    return '${_formatNum(progress)} / ${_formatNum(goal)} $unit';
   }
 
   @override
@@ -128,7 +148,7 @@ class HabitCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                      if (accelerometer)
+                      if (accelerometer || chronometer)
                         Padding(
                           padding: const EdgeInsets.only(left: 6),
                           child: InkWell(
@@ -149,7 +169,9 @@ class HabitCard extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.directions_walk,
+                                    chronometer
+                                        ? Icons.timer_outlined
+                                        : Icons.directions_walk,
                                     color: isRecording
                                         ? Colors.red
                                         : const Color(0xFF006B59),
@@ -189,7 +211,7 @@ class HabitCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   Text(
-                    '${_formatNum(progress)} / ${_formatNum(goal)} $unit',
+                    _progressText,
                     style: TextStyle(fontSize: 12, color: textColorLight),
                   ),
                 ],

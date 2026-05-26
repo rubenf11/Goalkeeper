@@ -5,14 +5,17 @@ import 'package:permission_handler/permission_handler.dart';
 import '../data/models/moment_photo.dart';
 import '../data/models/habit.dart';
 import '../data/models/accelerometer_tracking_data.dart';
+import '../data/models/chronometer_tracking_data.dart';
 import 'package:provider/provider.dart';
 import 'add_entry_screen.dart';
 import '../services/habit_service.dart';
 import '../services/moment_service.dart';
 import '../services/accelerometer_tracking_service.dart';
+import '../services/chronometer_tracking_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../widgets/moment_details_dialog.dart';
 import '../widgets/accelerometer_confirmation_sheet.dart';
+import '../widgets/chronometer_confirmation_sheet.dart';
 import '../services/entry_service.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
@@ -25,6 +28,7 @@ class HabitDetailsScreen extends StatefulWidget {
   final Timestamp created_at;
   final Frequency frequency;
   final bool accelerometer;
+  final bool chronometer;
 
   const HabitDetailsScreen({
     super.key,
@@ -37,6 +41,7 @@ class HabitDetailsScreen extends StatefulWidget {
     required this.created_at,
     required this.frequency,
     this.accelerometer = false,
+    this.chronometer = false,
   });
 
   @override
@@ -56,6 +61,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
   final AccelerometerTrackingService _trackingService =
       AccelerometerTrackingService();
+  final ChronometerTrackingService _chronoTrackingService =
+      ChronometerTrackingService();
 
   @override
   void initState() {
@@ -65,6 +72,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
 
     _trackingService.allData.addListener(_onTrackingDataChanged);
+    _chronoTrackingService.allData.addListener(_onTrackingDataChanged);
 
     // Recalculate stats once when opening the habit details page to ensure
     // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
@@ -84,6 +92,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   @override
   void dispose() {
     _trackingService.allData.removeListener(_onTrackingDataChanged);
+    _chronoTrackingService.allData.removeListener(_onTrackingDataChanged);
     super.dispose();
   }
 
@@ -318,7 +327,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             child: Column(
               children: [
                 _buildCircularProgress(currentProgress, progressPercentage),
-                if (widget.accelerometer) ...[
+                if (widget.accelerometer || widget.chronometer) ...[
                   const SizedBox(height: 24),
                   _buildRecordingSection(),
                 ],
@@ -411,6 +420,15 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   }
 
   Future<void> _startRecording() async {
+    if (widget.chronometer) {
+      _chronoTrackingService.startRecording(
+        habitId: widget.habitId,
+        habitName: widget.name,
+      );
+      setState(() {});
+      return;
+    }
+
     if (_trackingService.isRecording(widget.habitId)) return;
 
     if (!await AccelerometerTrackingService.hasPermission()) {
@@ -456,6 +474,56 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   }
 
   Future<void> _stopRecording() async {
+    if (widget.chronometer) {
+      final elapsed = _chronoTrackingService.stopRecording(widget.habitId);
+      if (elapsed == null) return;
+      setState(() {});
+
+      if (!mounted) return;
+
+      final data = ChronometerTrackingData(elapsedTime: elapsed);
+      final result = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => ChronometerConfirmationSheet(
+          data: data,
+          habitName: widget.name,
+          habitId: widget.habitId,
+        ),
+      );
+
+      if (result == null || !mounted) return;
+
+      final entryService = context.read<EntryService>();
+      final error = await entryService.addEntrytoHabit(
+        habitId: widget.habitId,
+        amount: result['amount'] as double,
+        imageFile: result['imageFile'] as File?,
+        caption: result['caption'] as String?,
+      );
+
+      if (!mounted) return;
+
+      if (error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Entry saved from timer!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        context.read<HabitService>().recalculateHabitStats(widget.habitId);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
     final data = _trackingService.stopRecording(widget.habitId);
     if (data == null) return;
     setState(() {});
@@ -505,6 +573,33 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   }
 
   Widget _buildRecordingSection() {
+    if (widget.chronometer) {
+      return ValueListenableBuilder<Map<String, ChronometerTrackingData>>(
+        valueListenable: _chronoTrackingService.allData,
+        builder: (context, dataMap, child) {
+          final myData = dataMap[widget.habitId];
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: myData != null
+                  ? primaryColor.withValues(alpha: 0.05)
+                  : cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: myData != null
+                    ? primaryColor.withValues(alpha: 0.3)
+                    : Colors.grey.shade200,
+              ),
+            ),
+            child: myData != null
+                ? _buildActiveChronoTimer(myData)
+                : _buildIdleChronoTimer(),
+          );
+        },
+      );
+    }
+
     return ValueListenableBuilder<Map<String, AccelerometerTrackingData>>(
       valueListenable: _trackingService.allData,
       builder: (context, dataMap, child) {
@@ -716,7 +811,18 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
-  static String _formatNum(num value) {
+  static String _formatDuration(num seconds) {
+    final total = seconds.toInt().abs();
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final s = total % 60;
+    final two = (int n) => n.toString().padLeft(2, '0');
+    if (h > 0) return '${two(h)}:${two(m)}:${two(s)}';
+    return '${two(m)}:${two(s)}';
+  }
+
+  static String _formatNum(num value, {bool isDuration = false}) {
+    if (isDuration) return _formatDuration(value);
     final s = (value is double ? value : value.toDouble()).toStringAsFixed(2);
     if (s.contains('.')) {
       final trimmed = s.replaceAll(RegExp(r'0*$'), '');
@@ -725,6 +831,157 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
           : trimmed;
     }
     return s;
+  }
+
+  Widget _buildIdleChronoTimer() {
+    return InkWell(
+      onTap: _startRecording,
+      borderRadius: BorderRadius.circular(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.timer_outlined,
+              color: Color(0xFF006B59),
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Timer',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: textColorDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap to start tracking time',
+                  style: TextStyle(color: textColorLight, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.play_arrow, color: Colors.white, size: 18),
+                SizedBox(width: 4),
+                Text(
+                  'Start',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveChronoTimer(ChronometerTrackingData data) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Timer Running...',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: primaryColor,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    data.elapsedFormatted,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Center(
+          child: Text(
+            data.elapsedFormatted,
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: textColorDark,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _stopRecording,
+            icon: const Icon(Icons.stop, color: Colors.white),
+            label: const Text(
+              'Stop Timer',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCircularProgress(double progress, double percentage) {
@@ -747,7 +1004,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _formatNum(progress),
+                _formatNum(progress, isDuration: widget.chronometer),
                 style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
@@ -755,7 +1012,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 ),
               ),
               Text(
-                "/ ${_formatNum(widget.goal)} ${widget.unit}",
+                widget.chronometer
+                    ? "/ ${_formatDuration(widget.goal)}"
+                    : "/ ${_formatNum(widget.goal)} ${widget.unit}",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
