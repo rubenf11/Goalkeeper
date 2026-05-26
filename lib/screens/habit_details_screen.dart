@@ -56,7 +56,6 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
   final AccelerometerTrackingService _trackingService =
       AccelerometerTrackingService();
-  bool _isTracking = false;
 
   @override
   void initState() {
@@ -65,7 +64,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       widget.habitId,
     );
 
-    _trackingService.trackingData.addListener(_onTrackingDataChanged);
+    _trackingService.allData.addListener(_onTrackingDataChanged);
 
     // Recalculate stats once when opening the habit details page to ensure
     // displayed metrics are up-to-date (handles cases where entries were added elsewhere).
@@ -84,16 +83,13 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
   @override
   void dispose() {
-    _trackingService.trackingData.removeListener(_onTrackingDataChanged);
-    _trackingService.dispose();
+    _trackingService.allData.removeListener(_onTrackingDataChanged);
     super.dispose();
   }
 
   void _onTrackingDataChanged() {
     if (!mounted) return;
-    setState(() {
-      _isTracking = _trackingService.trackingData.value.isRecording;
-    });
+    setState(() {});
   }
 
   Future<void> _showConfirmationDialog(bool isCurrentlyDone) async {
@@ -415,6 +411,8 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   }
 
   Future<void> _startRecording() async {
+    if (_trackingService.isRecording(widget.habitId)) return;
+
     if (!await AccelerometerTrackingService.hasPermission()) {
       final granted = await AccelerometerTrackingService.requestPermission();
       if (!granted) {
@@ -446,13 +444,20 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       }
     }
     if (!mounted) return;
-    _trackingService.startRecording();
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
+    _trackingService.startRecording(
+      habitId: widget.habitId,
+      habitName: widget.name,
+      unit: widget.unit,
+    );
     setState(() {});
   }
 
   Future<void> _stopRecording() async {
-    _trackingService.stopRecording();
-    final data = _trackingService.trackingData.value;
+    final data = _trackingService.stopRecording(widget.habitId);
+    if (data == null) return;
     setState(() {});
 
     if (!mounted) return;
@@ -500,25 +505,26 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
   }
 
   Widget _buildRecordingSection() {
-    return ValueListenableBuilder<AccelerometerTrackingData>(
-      valueListenable: _trackingService.trackingData,
-      builder: (context, data, child) {
+    return ValueListenableBuilder<Map<String, AccelerometerTrackingData>>(
+      valueListenable: _trackingService.allData,
+      builder: (context, dataMap, child) {
+        final myData = dataMap[widget.habitId];
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: _isTracking
+            color: myData != null
                 ? primaryColor.withValues(alpha: 0.05)
                 : cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: _isTracking
+              color: myData != null
                   ? primaryColor.withValues(alpha: 0.3)
                   : Colors.grey.shade200,
             ),
           ),
-          child: _isTracking
-              ? _buildActiveRecording(data)
+          child: myData != null
+              ? _buildActiveRecording(myData)
               : _buildIdleRecording(),
         );
       },

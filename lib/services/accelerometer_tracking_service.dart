@@ -6,22 +6,46 @@ import 'package:permission_handler/permission_handler.dart';
 import '../data/models/accelerometer_tracking_data.dart';
 import 'background_recording_service.dart';
 
+class _Session {
+  final String habitId;
+  final String habitName;
+  final String unit;
+  final DateTime startTime;
+  int initialSteps;
+  int stepCount;
+  bool initialCountCaptured;
+
+  _Session({
+    required this.habitId,
+    required this.habitName,
+    required this.unit,
+    required this.startTime,
+    required this.initialSteps,
+    required this.stepCount,
+    required this.initialCountCaptured,
+  });
+}
+
 class AccelerometerTrackingService {
+  static final AccelerometerTrackingService _instance =
+      AccelerometerTrackingService._();
+  factory AccelerometerTrackingService() => _instance;
+  AccelerometerTrackingService._();
+
   StreamSubscription<StepCount>? _subscription;
   Timer? _timer;
-
-  int _stepCount = 0;
-  int _initialSteps = 0;
-  bool _initialCountCaptured = false;
-  DateTime? _startTime;
+  final Map<String, _Session> _sessions = {};
 
   static const double _strideLengthMeters = 0.75;
 
-  final ValueNotifier<AccelerometerTrackingData> trackingData = ValueNotifier(
-    const AccelerometerTrackingData(),
-  );
+  final ValueNotifier<Map<String, AccelerometerTrackingData>> allData =
+      ValueNotifier({});
 
-  bool get isRecording => _subscription != null;
+  bool get hasActiveSessions => _sessions.isNotEmpty;
+
+  bool isRecording(String habitId) => _sessions.containsKey(habitId);
+
+  AccelerometerTrackingData? getData(String habitId) => allData.value[habitId];
 
   static Future<bool> requestPermission() async {
     if (Platform.isAndroid) {
@@ -41,80 +65,125 @@ class AccelerometerTrackingService {
     return true;
   }
 
-  void startRecording() {
-    if (isRecording) return;
+  void startRecording({
+    required String habitId,
+    required String habitName,
+    required String unit,
+  }) {
+    if (_sessions.containsKey(habitId)) return;
 
-    _stepCount = 0;
-    _initialSteps = 0;
-    _initialCountCaptured = false;
-    _startTime = DateTime.now();
+    final session = _Session(
+      habitId: habitId,
+      habitName: habitName,
+      unit: unit,
+      startTime: DateTime.now(),
+      initialSteps: 0,
+      stepCount: 0,
+      initialCountCaptured: false,
+    );
+    _sessions[habitId] = session;
 
-    trackingData.value = const AccelerometerTrackingData(isRecording: true);
+    final data = AccelerometerTrackingData(isRecording: true);
+    allData.value = {...allData.value, habitId: data};
 
-    BackgroundRecordingService().start(steps: 0, elapsed: '0s');
-
-    _subscription = Pedometer.stepCountStream.listen(
-      _onStepCount,
-      onError: _onError,
+    BackgroundRecordingService().addSession(
+      habitId: habitId,
+      habitName: habitName,
+      unit: unit,
+      steps: 0,
+      distanceMeters: 0.0,
+      elapsed: '0s',
     );
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_startTime == null) return;
-      trackingData.value = trackingData.value.copyWith(
-        steps: _stepCount,
-        distanceMeters: _stepCount * _strideLengthMeters,
-        elapsedTime: DateTime.now().difference(_startTime!),
+    if (_subscription == null) {
+      _subscription = Pedometer.stepCountStream.listen(
+        _onStepCount,
+        onError: _onError,
       );
-      BackgroundRecordingService().update(
-        steps: _stepCount,
-        elapsed: trackingData.value.elapsedFormatted,
+      _timer = Timer.periodic(const Duration(seconds: 1), _tick);
+    }
+  }
+
+  void _tick(Timer _) {
+    final now = DateTime.now();
+    final newData = <String, AccelerometerTrackingData>{};
+
+    for (final session in _sessions.values) {
+      final data = AccelerometerTrackingData(
+        steps: session.stepCount,
+        distanceMeters: session.stepCount * _strideLengthMeters,
+        elapsedTime: now.difference(session.startTime),
+        isRecording: true,
       );
-    });
+      newData[session.habitId] = data;
+
+      BackgroundRecordingService().updateSession(
+        habitId: session.habitId,
+        habitName: session.habitName,
+        unit: session.unit,
+        steps: session.stepCount,
+        distanceMeters: session.stepCount * _strideLengthMeters,
+        elapsed: data.elapsedFormatted,
+        totalSessions: _sessions.length,
+        totalSteps: _totalSteps,
+      );
+    }
+
+    allData.value = newData;
   }
 
   void _onStepCount(StepCount count) {
-    if (!_initialCountCaptured) {
-      _initialSteps = count.steps;
-      _initialCountCaptured = true;
-      return;
+    for (final session in _sessions.values) {
+      if (!session.initialCountCaptured) {
+        session.initialSteps = count.steps;
+        session.initialCountCaptured = true;
+      } else {
+        session.stepCount = count.steps - session.initialSteps;
+        if (session.stepCount < 0) session.stepCount = 0;
+      }
     }
-
-    _stepCount = count.steps - _initialSteps;
-    if (_stepCount < 0) _stepCount = 0;
-
-    trackingData.value = trackingData.value.copyWith(
-      steps: _stepCount,
-      distanceMeters: _stepCount * _strideLengthMeters,
-    );
   }
 
   void _onError(Object error) {
     debugPrint('Pedometer error: $error');
-    stopRecording();
+    for (final habitId in _sessions.keys.toList()) {
+      stopRecording(habitId);
+    }
   }
 
-  (int steps, double distanceMeters) stopRecording() {
-    _subscription?.cancel();
-    _subscription = null;
-    _timer?.cancel();
-    _timer = null;
+  int get _totalSteps =>
+      _sessions.values.fold(0, (sum, s) => sum + s.stepCount);
 
-    BackgroundRecordingService().stop();
+  AccelerometerTrackingData? stopRecording(String habitId) {
+    final session = _sessions.remove(habitId);
+    if (session == null) return null;
 
-    if (_startTime != null) {
-      trackingData.value = trackingData.value.copyWith(
-        elapsedTime: DateTime.now().difference(_startTime!),
-        isRecording: false,
-      );
+    final data = AccelerometerTrackingData(
+      steps: session.stepCount,
+      distanceMeters: session.stepCount * _strideLengthMeters,
+      elapsedTime: DateTime.now().difference(session.startTime),
+      isRecording: false,
+    );
+
+    final remainingSteps = _totalSteps;
+
+    BackgroundRecordingService().removeSession(
+      habitId: habitId,
+      remainingSessions: _sessions.length,
+      totalSteps: remainingSteps,
+    );
+
+    final newData = Map<String, AccelerometerTrackingData>.from(allData.value);
+    newData.remove(habitId);
+    allData.value = newData;
+
+    if (_sessions.isEmpty) {
+      _subscription?.cancel();
+      _subscription = null;
+      _timer?.cancel();
+      _timer = null;
     }
 
-    _startTime = null;
-
-    return (_stepCount, _stepCount * _strideLengthMeters);
-  }
-
-  void dispose() {
-    stopRecording();
-    trackingData.dispose();
+    return data;
   }
 }

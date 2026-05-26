@@ -10,6 +10,7 @@ class HabitCard extends StatelessWidget {
   final String unit;
   final int streak;
   final bool accelerometer;
+  final bool isRecording;
   final VoidCallback? onTap;
   final VoidCallback? onRecordTap;
 
@@ -22,6 +23,7 @@ class HabitCard extends StatelessWidget {
     required this.unit,
     required this.streak,
     this.accelerometer = false,
+    this.isRecording = false,
     this.onTap,
     this.onRecordTap,
   }) : super(key: key);
@@ -85,12 +87,16 @@ class HabitCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: textColorDark,
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: textColorDark,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (streak > 0)
@@ -129,15 +135,38 @@ class HabitCard extends StatelessWidget {
                             onTap: onRecordTap,
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.1),
+                                color: isRecording
+                                    ? Colors.red.withValues(alpha: 0.1)
+                                    : primaryColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Icon(
-                                Icons.directions_walk,
-                                color: Color(0xFF006B59),
-                                size: 16,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.directions_walk,
+                                    color: isRecording
+                                        ? Colors.red
+                                        : const Color(0xFF006B59),
+                                    size: 16,
+                                  ),
+                                  if (isRecording) ...[
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Tracking...',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
