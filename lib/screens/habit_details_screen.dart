@@ -18,8 +18,8 @@ import '../services/entry_service.dart';
 class HabitDetailsScreen extends StatefulWidget {
   final String habitId;
   final String name;
-  final int goal;
-  final int progress;
+  final double goal;
+  final double progress;
   final String unit;
   final int streak;
   final Timestamp created_at;
@@ -190,7 +190,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
       builder: (context, snapshot) {
         final habitData = snapshot.data;
 
-        int currentProgress = habitData?.progress ?? widget.progress;
+        double currentProgress = habitData?.progress ?? widget.progress;
         int currentStreak = habitData?.streak ?? widget.streak;
         int currentHighestStreak = habitData?.highestStreak ?? 0;
         int currentDaysCompleted = habitData?.daysCompleted ?? 0;
@@ -710,7 +710,18 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildCircularProgress(int progress, double percentage) {
+  static String _formatNum(num value) {
+    final s = (value is double ? value : value.toDouble()).toStringAsFixed(2);
+    if (s.contains('.')) {
+      final trimmed = s.replaceAll(RegExp(r'0*$'), '');
+      return trimmed.endsWith('.')
+          ? trimmed.substring(0, trimmed.length - 1)
+          : trimmed;
+    }
+    return s;
+  }
+
+  Widget _buildCircularProgress(double progress, double percentage) {
     return Center(
       child: Stack(
         alignment: Alignment.center,
@@ -730,7 +741,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$progress',
+                _formatNum(progress),
                 style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
@@ -738,7 +749,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                 ),
               ),
               Text(
-                "/ ${widget.goal} ${widget.unit}",
+                "/ ${_formatNum(widget.goal)} ${widget.unit}",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -1039,7 +1050,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        progress.toInt().toString(),
+                        _formatNum(progress),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: isToday
@@ -1301,7 +1312,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: Text(
-                              value.toInt().toString(),
+                              _formatNum(value),
                               style: TextStyle(
                                 color: textColorLight,
                                 fontSize: 10,

@@ -17,7 +17,7 @@ class HabitService {
     required String name,
     required String category,
     required Frequency frequency,
-    required int goal,
+    required double goal,
     required String unit,
     required bool accelerometer,
   }) async {
@@ -31,7 +31,7 @@ class HabitService {
         goal: goal,
         unit: unit.trim(),
         accelerometer: accelerometer,
-        progress: 0,
+        progress: 0.0,
         goalReached: false,
         streak: 0,
         highestStreak: 0,
@@ -100,12 +100,18 @@ class HabitService {
       return 'Error updating habit completion status: $e';
     }
   }
-    
-  Stream<Map<String, num>> watchWeeklyProgress(String habitId, {String mode = 'Sum'}) {
+
+  Stream<Map<String, num>> watchWeeklyProgress(
+    String habitId, {
+    String mode = 'Sum',
+  }) {
     return _repository.watchWeeklyProgress(habitId, mode: mode);
   }
 
-  Stream<Map<String, num>> watchMonthlyProgress(String habitId, {String mode = 'Sum'}) {
+  Stream<Map<String, num>> watchMonthlyProgress(
+    String habitId, {
+    String mode = 'Sum',
+  }) {
     return _repository.watchMonthlyProgress(habitId, mode: mode);
   }
 }

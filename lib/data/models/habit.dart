@@ -57,10 +57,10 @@ class Habit {
   final String name;
   final String category;
   final Frequency frequency;
-  final int goal;
+  final double goal;
   final String unit;
   final bool accelerometer;
-  final int progress;
+  final double progress;
   final bool goalReached;
   final int streak;
   final int highestStreak;
@@ -75,10 +75,10 @@ class Habit {
     String? name,
     String? category,
     Frequency? frequency,
-    int? goal,
+    double? goal,
     String? unit,
     bool? accelerometer,
-    int? progress,
+    double? progress,
     bool? goalReached,
     int? streak,
     int? highestStreak,
@@ -142,10 +142,10 @@ class Habit {
       name: map['name'] as String? ?? '',
       category: map['category'] as String? ?? '',
       frequency: FrequencyX.fromString(map['frequency'] as String? ?? 'daily'),
-      goal: (map['goal'] as num?)?.toInt() ?? 0,
+      goal: (map['goal'] as num?)?.toDouble() ?? 0.0,
       unit: map['unit'] as String? ?? '',
       accelerometer: map['accelerometer'] as bool? ?? false,
-      progress: (map['progress'] as num?)?.toInt() ?? 0,
+      progress: (map['progress'] as num?)?.toDouble() ?? 0.0,
       goalReached: map['goal_reached'] as bool? ?? false,
       streak: (map['streak'] as num?)?.toInt() ?? 0,
       highestStreak: (map['highest_streak'] as num?)?.toInt() ?? 0,

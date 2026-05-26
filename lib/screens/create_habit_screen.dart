@@ -55,13 +55,14 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _isSubmitting = true;
     });
 
-    final int goal = int.parse(_goalController.text.replaceAll(',', ''));
+    final double goal = double.parse(_goalController.text.replaceAll(',', ''));
+    final double roundedGoal = double.parse(goal.toStringAsFixed(2));
 
     final HabitCreationResult result = await _habitService.createHabit(
       name: _nameController.text,
       category: _selectedCategory,
       frequency: _selectedFrequency,
-      goal: goal,
+      goal: roundedGoal,
       unit: _unitController.text,
       accelerometer: _accelerometerEnabled,
     );
@@ -365,7 +366,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _goalController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             textInputAction: TextInputAction.next,
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(

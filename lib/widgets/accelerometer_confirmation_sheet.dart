@@ -45,6 +45,7 @@ class _AccelerometerConfirmationSheetState
       builder: (BuildContext context) {
         return ImageSourceBottomSheet(
           onSourceSelected: (ImageSource source) async {
+            Navigator.pop(context);
             final picker = ImagePicker();
             final pickedFile = await picker.pickImage(
               source: source,

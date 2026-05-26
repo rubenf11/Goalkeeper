@@ -5,8 +5,8 @@ import 'habit_category_catalog.dart';
 class HabitCard extends StatelessWidget {
   final String category;
   final String name;
-  final int goal;
-  final int progress;
+  final double goal;
+  final double progress;
   final String unit;
   final int streak;
   final bool accelerometer;
@@ -25,6 +25,17 @@ class HabitCard extends StatelessWidget {
     this.onTap,
     this.onRecordTap,
   }) : super(key: key);
+
+  static String _formatNum(num value) {
+    final s = (value is double ? value : value.toDouble()).toStringAsFixed(2);
+    if (s.contains('.')) {
+      final trimmed = s.replaceAll(RegExp(r'0*$'), '');
+      return trimmed.endsWith('.')
+          ? trimmed.substring(0, trimmed.length - 1)
+          : trimmed;
+    }
+    return s;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +160,7 @@ class HabitCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   Text(
-                    '$progress / $goal $unit',
+                    '${_formatNum(progress)} / ${_formatNum(goal)} $unit',
                     style: TextStyle(fontSize: 12, color: textColorLight),
                   ),
                 ],
