@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -456,7 +457,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
 
     if (!mounted) return;
 
-    final result = await showModalBottomSheet<double>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
@@ -476,7 +477,9 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
     final entryService = context.read<EntryService>();
     final error = await entryService.addEntrytoHabit(
       habitId: widget.habitId,
-      amount: result,
+      amount: result['amount'] as double,
+      imageFile: result['imageFile'] as File?,
+      caption: result['caption'] as String?,
     );
 
     if (!mounted) return;
