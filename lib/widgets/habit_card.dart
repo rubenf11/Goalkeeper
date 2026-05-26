@@ -135,7 +135,7 @@ class HabitCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: const Icon(
-                                Icons.sensors,
+                                Icons.directions_walk,
                                 color: Color(0xFF006B59),
                                 size: 16,
                               ),

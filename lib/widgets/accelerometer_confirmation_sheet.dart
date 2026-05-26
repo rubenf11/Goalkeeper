@@ -203,7 +203,7 @@ class _AccelerometerConfirmationSheetState
                 style: OutlinedButton.styleFrom(
                   foregroundColor: primaryColor,
                   side: BorderSide(color: primaryColor),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

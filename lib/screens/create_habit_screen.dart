@@ -29,11 +29,13 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   final List<HabitCategoryOption> _categories = HabitCategoryCatalog.options;
 
   final List<String> _accelerometerUnits = ['steps', 'meters', 'km', 'miles'];
+  final List<String> _trackingOptions = ['Manual', 'Step Counter'];
 
   String _selectedCategory = 'Health & Fitness';
   Frequency _selectedFrequency = Frequency.daily;
   bool _accelerometerEnabled = false;
   String _selectedAccelUnit = 'steps';
+  String _selectedTracking = 'Manual';
   bool _isSubmitting = false;
 
   @override
@@ -97,6 +99,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _selectedFrequency = Frequency.daily;
       _accelerometerEnabled = false;
       _selectedAccelUnit = 'steps';
+      _selectedTracking = 'Manual';
     });
 
     final Timestamp createdAt = createdHabit.createdAt == null
@@ -190,42 +193,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFrequencyCard(Frequency frequency) {
-    final bool isSelected = _selectedFrequency == frequency;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          setState(() {
-            _selectedFrequency = frequency;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          decoration: BoxDecoration(
-            color: isSelected ? _primaryColor : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isSelected ? _primaryColor : Colors.grey.shade200,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            _frequencyLabel(frequency),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? Colors.white : _textColorDark,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
           ),
         ),
       ),
@@ -334,19 +301,67 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: 68,
-                  ),
-                  itemCount: Frequency.values.length,
-                  itemBuilder: (context, index) {
-                    return _buildFrequencyCard(Frequency.values[index]);
+                DropdownButtonFormField<Frequency>(
+                  value: _selectedFrequency,
+                  items: Frequency.values.map((f) {
+                    return DropdownMenuItem(
+                      value: f,
+                      child: Text(_frequencyLabel(f)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedFrequency = value;
+                      });
+                    }
                   },
+                  decoration: _inputDecoration('Daily'),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tracking',
+                            style: TextStyle(
+                              color: _textColorDark,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            value: _selectedTracking,
+                            items: _trackingOptions
+                                .map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _selectedTracking = value;
+                                _accelerometerEnabled = value == 'Step Counter';
+                                if (_accelerometerEnabled) {
+                                  _unitController.text = 'steps';
+                                  _selectedAccelUnit = 'steps';
+                                }
+                              });
+                            },
+                            decoration: _inputDecoration('Manual'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 28),
                 Row(
@@ -442,59 +457,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.teal.shade100),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.teal.shade50,
-                        child: Icon(Icons.sensors, color: _primaryColor),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Auto-track with accelerometer',
-                              style: TextStyle(
-                                color: _textColorDark,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Sync progress automatically via movement.',
-                              style: TextStyle(color: _textColorLight),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _accelerometerEnabled,
-                        activeThumbColor: Colors.white,
-                        activeTrackColor: _primaryColor,
-                        onChanged: (value) {
-                          setState(() {
-                            _accelerometerEnabled = value;
-                            if (value) {
-                              _unitController.text = 'steps';
-                              _selectedAccelUnit = 'steps';
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(

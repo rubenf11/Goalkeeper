@@ -538,7 +538,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
-              Icons.sensors,
+              Icons.directions_walk,
               color: Color(0xFF006B59),
               size: 28,
             ),
@@ -549,7 +549,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Auto-track with accelerometer',
+                  'Auto-track with step counter',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
