@@ -15,6 +15,7 @@ import '../widgets/habit_card.dart';
 import 'gallery_screen.dart';
 import 'habit_details_screen.dart';
 import '../services/entry_service.dart';
+import '../services/accelerometer_tracking_service.dart';
 import '../widgets/moment_details_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -34,7 +35,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final MomentService _momentService = MomentService();
   final HabitService _habitService = HabitService();
   final UserService _userService = UserService();
+  final AccelerometerTrackingService _trackingService =
+      AccelerometerTrackingService();
   bool _isUploadingPhoto = false;
+  Set<String> _recordingHabitIds = {};
 
   Future<void> _pickAndUploadProfilePhoto() async {
     if (_isUploadingPhoto) {
@@ -282,6 +286,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _recordingHabitIds = _trackingService.allData.value.keys.toSet();
+    _trackingService.allData.addListener(_onRecordingChanged);
+  }
+
+  @override
+  void dispose() {
+    _trackingService.allData.removeListener(_onRecordingChanged);
+    super.dispose();
+  }
+
+  void _onRecordingChanged() {
+    final newIds = _trackingService.allData.value.keys.toSet();
+    if (newIds.length == _recordingHabitIds.length &&
+        _recordingHabitIds.containsAll(newIds))
+      return;
+    setState(() {
+      _recordingHabitIds = newIds;
+    });
+  }
+
   Widget _buildHabitList() {
     return StreamBuilder<List<Habit>>(
       stream: _habitService.watchCurrentUserHabits(),
@@ -326,6 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               unit: habit.unit,
               streak: habit.streak,
               accelerometer: habit.accelerometer,
+              isRecording: _recordingHabitIds.contains(habit.id),
               onTap: () {
                 Navigator.push(
                   context,
@@ -380,8 +408,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           stream: _userService.watchCurrentUserProfile(),
           builder: (context, userSnapshot) {
             final userData = userSnapshot.data;
-            final String? photoUrl = userData?['photoUrl'] as String? ?? currentUser.photoURL;
-            final String displayName = userData?['name'] as String? ?? currentUser.displayName ?? '??????';
+            final String? photoUrl =
+                userData?['photoUrl'] as String? ?? currentUser.photoURL;
+            final String displayName =
+                userData?['name'] as String? ??
+                currentUser.displayName ??
+                '??????';
 
             return Scaffold(
               backgroundColor: backgroundColor,
@@ -441,7 +473,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => GalleryScreen(userId: currentUser.uid),
+                                builder: (context) =>
+                                    GalleryScreen(userId: currentUser.uid),
                               ),
                             );
                           },

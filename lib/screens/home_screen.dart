@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../widgets/habit_card.dart';
 import '../services/habit_service.dart';
 import '../services/user_service.dart';
+import '../services/accelerometer_tracking_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,11 +30,15 @@ class _HomeScreenState extends State<HomeScreen> {
   User? get currentUser => _authService.currentUser;
   late final Stream<List<Habit>> _activeHabitsStream;
   final UserService _userService = UserService();
+  final AccelerometerTrackingService _trackingService =
+      AccelerometerTrackingService();
 
   final PageController _pageController = PageController();
+  Set<String> _recordingHabitIds = {};
 
   @override
   void dispose() {
+    _trackingService.allData.removeListener(_onRecordingChanged);
     _pageController.dispose();
     super.dispose();
   }
@@ -45,8 +50,21 @@ class _HomeScreenState extends State<HomeScreen> {
         .read<HabitService>()
         .watchCurrentUserActiveHabits();
 
+    _recordingHabitIds = _trackingService.allData.value.keys.toSet();
+    _trackingService.allData.addListener(_onRecordingChanged);
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<HabitService>().refreshAllHabits();
+    });
+  }
+
+  void _onRecordingChanged() {
+    final newIds = _trackingService.allData.value.keys.toSet();
+    if (newIds.length == _recordingHabitIds.length &&
+        _recordingHabitIds.containsAll(newIds))
+      return;
+    setState(() {
+      _recordingHabitIds = newIds;
     });
   }
 
@@ -292,6 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             unit: habit.unit,
                             streak: habit.streak,
                             accelerometer: habit.accelerometer,
+                            isRecording: _recordingHabitIds.contains(habit.id),
                             onTap: () => _navigateToDetails(habit),
                             onRecordTap: () => _navigateToDetails(habit),
                           );
