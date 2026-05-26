@@ -215,12 +215,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.settings_outlined, color: _textColorLight),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Form(

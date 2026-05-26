@@ -90,14 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
           'GoalKeeper',
           style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
         ),
-
-        // Settings Button
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: textColorLight),
-            onPressed: () {},
-          ),
-        ],
       ),
 
       body: SingleChildScrollView(
