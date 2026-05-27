@@ -4,6 +4,7 @@ import '../data/models/habit.dart';
 import '../services/habit_service.dart';
 import 'add_entry_screen.dart';
 import '../widgets/habit_card.dart';
+import '../widgets/habit_filter_sheet.dart';
 
 class CreateEntryScreen extends StatefulWidget {
   const CreateEntryScreen({super.key});
@@ -19,6 +20,7 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
 
   final HabitService _habitService = HabitService();
   final AuthService _authService = AuthService();
+  HabitFilter _filter = const HabitFilter();
 
   @override
   Widget build(BuildContext context) {
@@ -47,42 +49,62 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
 
                 final habits = snapshot.data!;
                 final activeHabits = habits.where((h) => !h.isDone).toList();
+                final filtered = _filter.hasActiveFilters
+                    ? activeHabits.where((h) => _filter.matches(h)).toList()
+                    : activeHabits;
 
-                if (activeHabits.isEmpty) {
-                  return const Center(
-                    child: Text('No active habits. Create one first.'),
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Text(
+                      _filter.hasActiveFilters
+                          ? 'No habits match the selected filters.'
+                          : 'No active habits. Create one first.',
+                    ),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: activeHabits.length,
-                  itemBuilder: (context, index) {
-                    final habit = activeHabits[index];
-                    return HabitCard(
-                      category: habit.category,
-                      name: habit.name,
-                      goal: habit.goal,
-                      progress: habit.progress,
-                      unit: habit.unit,
-                      streak: habit.streak,
-                      limitGoal: habit.limitGoal,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddEntryScreen(
-                              habitId: habit.habitId,
-                              habitName: habit.name,
-                              habitUnit: habit.unit,
-                              currentProgress: habit.progress,
-                              chronometer: habit.chronometer,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: HabitFilterRow(
+                        filter: _filter,
+                        onChanged: (f) => setState(() => _filter = f),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final habit = filtered[index];
+                          return HabitCard(
+                            category: habit.category,
+                            name: habit.name,
+                            goal: habit.goal,
+                            progress: habit.progress,
+                            unit: habit.unit,
+                            streak: habit.streak,
+                            limitGoal: habit.limitGoal,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddEntryScreen(
+                                    habitId: habit.habitId,
+                                    habitName: habit.name,
+                                    habitUnit: habit.unit,
+                                    currentProgress: habit.progress,
+                                    chronometer: habit.chronometer,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

@@ -12,6 +12,7 @@ import '../services/habit_service.dart';
 import '../services/moment_service.dart';
 import '../services/user_service.dart';
 import '../widgets/habit_card.dart';
+import '../widgets/habit_filter_sheet.dart';
 import 'gallery_screen.dart';
 import 'habit_details_screen.dart';
 import '../services/entry_service.dart';
@@ -42,6 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ChronometerTrackingService();
   bool _isUploadingPhoto = false;
   Set<String> _recordingHabitIds = {};
+  HabitFilter _filter = const HabitFilter();
 
   Future<void> _pickAndUploadProfilePhoto() async {
     if (_isUploadingPhoto) {
@@ -374,8 +376,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         final habits = snapshot.data ?? const <Habit>[];
         habits.sort((a, b) => b.daysCompleted.compareTo(a.daysCompleted));
+        final filtered = _filter.hasActiveFilters
+            ? habits.where((h) => _filter.matches(h)).toList()
+            : habits;
 
-        if (habits.isEmpty) {
+        if (filtered.isEmpty) {
           return Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -385,7 +390,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: Text(
-              'No habits yet',
+              _filter.hasActiveFilters
+                  ? 'No habits match the selected filters.'
+                  : 'No habits yet',
               style: TextStyle(color: textColorLight),
             ),
           );
@@ -394,9 +401,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: habits.length,
+          itemCount: filtered.length,
           itemBuilder: (context, index) {
-            final habit = habits[index];
+            final habit = filtered[index];
             return HabitCard(
               category: habit.category,
               name: habit.name,
@@ -547,16 +554,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 16),
                     _buildGallery(currentUser.uid),
                     const SizedBox(height: 32),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'My Habits',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: textColorDark,
-                        ),
+                    Text(
+                      'My Habits',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColorDark,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    HabitFilterRow(
+                      filter: _filter,
+                      onChanged: (f) => setState(() => _filter = f),
                     ),
                     const SizedBox(height: 16),
                     _buildHabitList(),

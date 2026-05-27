@@ -6,6 +6,7 @@ import 'package:goalkeeper/screens/habit_details_screen.dart';
 import '../data/models/habit.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/habit_card.dart';
+import '../widgets/habit_filter_sheet.dart';
 import '../services/habit_service.dart';
 import '../services/user_service.dart';
 import '../services/accelerometer_tracking_service.dart';
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final PageController _pageController = PageController();
   Set<String> _recordingHabitIds = {};
+  HabitFilter _filter = const HabitFilter();
 
   @override
   void dispose() {
@@ -257,19 +259,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ACTIVE HABITS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: textColorLight,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'ACTIVE HABITS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColorLight,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                HabitFilterRow(
+                  filter: _filter,
+                  onChanged: (f) => setState(() => _filter = f),
                 ),
                 const SizedBox(height: 16),
                 if (currentUser == null)
@@ -290,20 +292,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
 
                       final habits = snapshot.data ?? const <Habit>[];
+                      final filtered = _filter.hasActiveFilters
+                          ? habits.where((h) => _filter.matches(h)).toList()
+                          : habits;
 
-                      if (habits.isEmpty) {
-                        return Text(
-                          'No habits created yet.',
-                          style: TextStyle(color: textColorLight),
+                      if (filtered.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Text(
+                            _filter.hasActiveFilters
+                                ? 'No habits match the selected filters.'
+                                : 'No habits created yet.',
+                            style: TextStyle(color: textColorLight),
+                          ),
                         );
                       }
 
                       return ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: habits.length,
+                        itemCount: filtered.length,
                         itemBuilder: (context, index) {
-                          final habit = habits[index];
+                          final habit = filtered[index];
 
                           return HabitCard(
                             category: habit.category,
