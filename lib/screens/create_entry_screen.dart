@@ -66,6 +66,7 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
                       progress: habit.progress,
                       unit: habit.unit,
                       streak: habit.streak,
+                      limitGoal: habit.limitGoal,
                       onTap: () {
                         Navigator.push(
                           context,

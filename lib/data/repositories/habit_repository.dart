@@ -91,47 +91,41 @@ class HabitRepository {
     // Current period
     final DateTime currentPeriod = periodStartFor(now, habit.frequency);
     final double currentProgress = periodTotals[currentPeriod] ?? 0.0;
-    final bool currentMet = currentProgress >= habit.goal;
+    final bool currentMet = habit.limitGoal
+        ? currentProgress <= habit.goal
+        : currentProgress >= habit.goal;
 
-    // Streak calculation: count consecutive previous periods that met the goal
-    int streak = 0;
-    DateTime checkPeriod = currentPeriod;
-    if (!currentMet) {
-      // move to previous period
+    DateTime previousPeriod(DateTime p) {
       switch (habit.frequency) {
         case Frequency.daily:
-          checkPeriod = checkPeriod.subtract(const Duration(days: 1));
-          break;
+          return p.subtract(const Duration(days: 1));
         case Frequency.weekly:
-          checkPeriod = checkPeriod.subtract(const Duration(days: 7));
-          break;
+          return p.subtract(const Duration(days: 7));
         case Frequency.monthly:
-          checkPeriod = DateTime(checkPeriod.year, checkPeriod.month - 1, 1);
-          break;
+          return DateTime(p.year, p.month - 1, 1);
         case Frequency.yearly:
-          checkPeriod = DateTime(checkPeriod.year - 1, 1, 1);
-          break;
+          return DateTime(p.year - 1, 1, 1);
       }
     }
 
-    while (true) {
+    bool _metGoal(double tot) =>
+        habit.limitGoal ? tot <= habit.goal : tot >= habit.goal;
+
+    // Streak calculation: count consecutive previous periods that met the goal
+    int streak = 0;
+    final DateTime firstPeriod = periodStartFor(
+      habit.createdAt ?? now,
+      habit.frequency,
+    );
+    DateTime checkPeriod = currentMet
+        ? currentPeriod
+        : previousPeriod(currentPeriod);
+
+    while (!checkPeriod.isBefore(firstPeriod)) {
       final double tot = periodTotals[checkPeriod] ?? 0.0;
-      if (tot >= habit.goal) {
+      if (_metGoal(tot)) {
         streak++;
-        switch (habit.frequency) {
-          case Frequency.daily:
-            checkPeriod = checkPeriod.subtract(const Duration(days: 1));
-            break;
-          case Frequency.weekly:
-            checkPeriod = checkPeriod.subtract(const Duration(days: 7));
-            break;
-          case Frequency.monthly:
-            checkPeriod = DateTime(checkPeriod.year, checkPeriod.month - 1, 1);
-            break;
-          case Frequency.yearly:
-            checkPeriod = DateTime(checkPeriod.year - 1, 1, 1);
-            break;
-        }
+        checkPeriod = previousPeriod(checkPeriod);
       } else {
         break;
       }
@@ -163,7 +157,7 @@ class HabitRepository {
     DateTime? prev;
     for (final p in sortedPeriods) {
       final double tot = periodTotals[p] ?? 0.0;
-      final bool met = tot >= habit.goal;
+      final bool met = _metGoal(tot);
       if (met) {
         daysCompleted++;
         if (prev != null && isConsecutive(prev, p, habit.frequency)) {
@@ -180,30 +174,16 @@ class HabitRepository {
 
     highestStreak = highestStreak < streak ? streak : highestStreak;
 
-    try {
-      print('recalculateHabitStats: habitId=$habitId');
-      print('periodTotals keys=${periodTotals.keys.toList()}');
-      print('currentProgress=$currentProgress, currentMet=$currentMet');
-      print(
-        'computed streak=$streak, computed highestStreak=$highestStreak, habit.highestStreak=${habit.highestStreak}, daysCompleted=$daysCompleted',
-      );
+    final updateData = {
+      'progress': currentProgress,
+      'goal_reached': currentMet,
+      'streak': streak,
+      'highest_streak': highestStreak,
+      'days_completed': daysCompleted,
+      'last_entry_at': FieldValue.serverTimestamp(),
+    };
 
-      final updateData = {
-        'progress': currentProgress,
-        'goal_reached': currentMet,
-        'streak': streak,
-        'highest_streak': highestStreak,
-        'days_completed': daysCompleted,
-        'last_entry_at': FieldValue.serverTimestamp(),
-      };
-
-      print('recalculateHabitStats updateData=$updateData');
-      await habitRef.update(updateData);
-    } catch (e, st) {
-      print('recalculateHabitStats ERROR for $habitId: $e');
-      print(st);
-      rethrow;
-    }
+    await habitRef.update(updateData);
   }
 
   Future<void> markHabitAsCompleted(String habitId) async {

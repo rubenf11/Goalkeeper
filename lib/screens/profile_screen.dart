@@ -365,6 +365,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               streak: habit.streak,
               accelerometer: habit.accelerometer,
               chronometer: habit.chronometer,
+              limitGoal: habit.limitGoal,
               isRecording: _recordingHabitIds.contains(habit.id),
               onTap: () {
                 Navigator.push(
@@ -383,6 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       frequency: habit.frequency,
                       accelerometer: habit.accelerometer,
                       chronometer: habit.chronometer,
+                      limitGoal: habit.limitGoal,
                     ),
                   ),
                 );

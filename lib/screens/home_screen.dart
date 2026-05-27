@@ -314,6 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             streak: habit.streak,
                             accelerometer: habit.accelerometer,
                             chronometer: habit.chronometer,
+                            limitGoal: habit.limitGoal,
                             isRecording: _recordingHabitIds.contains(habit.id),
                             onTap: () => _navigateToDetails(habit),
                             onRecordTap: () => _navigateToDetails(habit),
@@ -345,6 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
           frequency: habit.frequency,
           accelerometer: habit.accelerometer,
           chronometer: habit.chronometer,
+          limitGoal: habit.limitGoal,
         ),
       ),
     );

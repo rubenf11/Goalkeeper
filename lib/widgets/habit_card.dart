@@ -11,6 +11,7 @@ class HabitCard extends StatelessWidget {
   final int streak;
   final bool accelerometer;
   final bool chronometer;
+  final bool limitGoal;
   final bool isRecording;
   final VoidCallback? onTap;
   final VoidCallback? onRecordTap;
@@ -25,6 +26,7 @@ class HabitCard extends StatelessWidget {
     required this.streak,
     this.accelerometer = false,
     this.chronometer = false,
+    this.limitGoal = false,
     this.isRecording = false,
     this.onTap,
     this.onRecordTap,
@@ -57,6 +59,13 @@ class HabitCard extends StatelessWidget {
       return '${_formatDuration(progress)} / ${_formatDuration(goal)}';
     }
     return '${_formatNum(progress)} / ${_formatNum(goal)} $unit';
+  }
+
+  Color _barColor(double pct) {
+    if (!limitGoal) return const Color(0xFF006B59);
+    if (pct <= 0.6) return Colors.green;
+    if (pct <= 0.85) return Colors.orange;
+    return Colors.red;
   }
 
   @override
@@ -203,7 +212,9 @@ class HabitCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: progressPercent > 1 ? 1 : progressPercent,
                       backgroundColor: progressBgColor,
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _barColor(progressPercent),
+                      ),
                       minHeight: 8,
                     ),
                   ),
@@ -212,7 +223,12 @@ class HabitCard extends StatelessWidget {
 
                   Text(
                     _progressText,
-                    style: TextStyle(fontSize: 12, color: textColorLight),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: limitGoal && progressPercent > 0.85
+                          ? Colors.red
+                          : textColorLight,
+                    ),
                   ),
                 ],
               ),

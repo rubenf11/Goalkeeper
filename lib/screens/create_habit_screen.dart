@@ -46,6 +46,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   String _selectedAccelUnit = 'steps';
   String _selectedTracking = 'Manual';
   bool _isSubmitting = false;
+  bool _limitGoal = false;
 
   @override
   void dispose() {
@@ -87,6 +88,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       unit: _unitController.text,
       accelerometer: _accelerometerEnabled,
       chronometer: _chronometerEnabled,
+      limitGoal: _limitGoal,
     );
 
     if (!mounted) {
@@ -121,6 +123,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _chronometerEnabled = false;
       _selectedAccelUnit = 'steps';
       _selectedTracking = 'Manual';
+      _limitGoal = false;
       _hhController.text = '0';
       _mmController.text = '0';
       _ssController.text = '0';
@@ -143,6 +146,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           frequency: createdHabit.frequency,
           accelerometer: createdHabit.accelerometer,
           chronometer: createdHabit.chronometer,
+          limitGoal: createdHabit.limitGoal,
         ),
       ),
     );
@@ -649,6 +653,27 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                       ),
                     ],
                   ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: Checkbox(
+                        value: _limitGoal,
+                        onChanged: (v) => setState(() => _limitGoal = v!),
+                        activeColor: _primaryColor,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Limit (stay below target)',
+                      style: TextStyle(color: _textColorDark, fontSize: 14),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,

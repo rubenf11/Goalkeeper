@@ -21,6 +21,7 @@ class HabitService {
     required String unit,
     required bool accelerometer,
     bool chronometer = false,
+    bool limitGoal = false,
   }) async {
     try {
       final Habit habit = Habit(
@@ -33,6 +34,7 @@ class HabitService {
         unit: unit.trim(),
         accelerometer: accelerometer,
         chronometer: chronometer,
+        limitGoal: limitGoal,
         progress: 0.0,
         goalReached: false,
         streak: 0,
