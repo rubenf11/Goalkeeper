@@ -9,6 +9,7 @@ class AddEntryScreen extends StatefulWidget {
   final String habitName;
   final String habitUnit;
   final double currentProgress;
+  final bool chronometer;
 
   const AddEntryScreen({
     Key? key,
@@ -16,6 +17,7 @@ class AddEntryScreen extends StatefulWidget {
     required this.habitName,
     required this.habitUnit,
     required this.currentProgress,
+    this.chronometer = false,
   }) : super(key: key);
 
   @override
@@ -30,12 +32,25 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   final Color textColorLight = const Color(0xFF64748B);
 
   final TextEditingController _valueController = TextEditingController();
+  final TextEditingController _hhController = TextEditingController(text: '0');
+  final TextEditingController _mmController = TextEditingController(text: '0');
+  final TextEditingController _ssController = TextEditingController(text: '0');
   final TextEditingController _captionController = TextEditingController();
 
   final EntryService _entryService = EntryService();
 
   File? _selectedImage;
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _valueController.dispose();
+    _hhController.dispose();
+    _mmController.dispose();
+    _ssController.dispose();
+    _captionController.dispose();
+    super.dispose();
+  }
 
   void _pickImage() {
     showModalBottomSheet(
@@ -65,27 +80,44 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     );
   }
 
+  int get _hh => int.tryParse(_hhController.text) ?? 0;
+  int get _mm => int.tryParse(_mmController.text) ?? 0;
+  int get _ss => int.tryParse(_ssController.text) ?? 0;
+
   Future<void> _saveEntry() async {
-    if (_valueController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter a value')));
-      return;
-    }
-
-    final double? entryValue = double.tryParse(_valueController.text);
-    if (entryValue == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid number')),
-      );
-      return;
-    }
-
-    if (entryValue <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entry amount must be greater than zero')),
-      );
-      return;
+    final double entryValue;
+    if (widget.chronometer) {
+      final total = _hh * 3600 + _mm * 60 + _ss;
+      if (total <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid duration')),
+        );
+        return;
+      }
+      entryValue = total.toDouble();
+    } else {
+      if (_valueController.text.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please enter a value')));
+        return;
+      }
+      final parsed = double.tryParse(_valueController.text);
+      if (parsed == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid number')),
+        );
+        return;
+      }
+      if (parsed <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Entry amount must be greater than zero'),
+          ),
+        );
+        return;
+      }
+      entryValue = parsed;
     }
 
     setState(() {
@@ -145,7 +177,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'PROGRESS VALUE (${widget.habitUnit.toUpperCase()})',
+                    widget.chronometer
+                        ? 'AMOUNT TO LOG'
+                        : 'PROGRESS VALUE (${widget.habitUnit.toUpperCase()})',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -153,19 +187,126 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. 5',
-                      filled: true,
-                      fillColor: inputColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                  if (widget.chronometer)
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            controller: _hhController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              hintText: 'hh',
+                              filled: true,
+                              fillColor: inputColor,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            ':',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: textColorDark,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 65,
+                          child: TextField(
+                            controller: _mmController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 2,
+                            decoration: InputDecoration(
+                              hintText: 'mm',
+                              counterText: '',
+                              filled: true,
+                              fillColor: inputColor,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              final parsed = int.tryParse(value);
+                              if (parsed != null && parsed > 59) {
+                                _mmController.text = '59';
+                                _mmController.selection =
+                                    TextSelection.fromPosition(
+                                      TextPosition(
+                                        offset: _mmController.text.length,
+                                      ),
+                                    );
+                              }
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            ':',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: textColorDark,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 65,
+                          child: TextField(
+                            controller: _ssController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 2,
+                            decoration: InputDecoration(
+                              hintText: 'ss',
+                              counterText: '',
+                              filled: true,
+                              fillColor: inputColor,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              final parsed = int.tryParse(value);
+                              if (parsed != null && parsed > 59) {
+                                _ssController.text = '59';
+                                _ssController.selection =
+                                    TextSelection.fromPosition(
+                                      TextPosition(
+                                        offset: _ssController.text.length,
+                                      ),
+                                    );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    TextField(
+                      controller: _valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 5',
+                        filled: true,
+                        fillColor: inputColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 32),
 
                   Text(

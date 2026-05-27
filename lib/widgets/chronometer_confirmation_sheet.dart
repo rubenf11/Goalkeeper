@@ -28,7 +28,9 @@ class _ChronometerConfirmationSheetState
   final Color textColorLight = const Color(0xFF64748B);
   final Color inputColor = const Color(0xFFEEF2F6);
 
-  late TextEditingController _amountController;
+  late TextEditingController _hhController;
+  late TextEditingController _mmController;
+  late TextEditingController _ssController;
   final TextEditingController _captionController = TextEditingController();
 
   File? _selectedImage;
@@ -63,17 +65,28 @@ class _ChronometerConfirmationSheetState
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(
-      text: widget.data.elapsedTime.inSeconds.toString(),
+    final e = widget.data.elapsedTime;
+    _hhController = TextEditingController(text: e.inHours.toString());
+    _mmController = TextEditingController(
+      text: e.inMinutes.remainder(60).toString(),
+    );
+    _ssController = TextEditingController(
+      text: e.inSeconds.remainder(60).toString(),
     );
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
+    _hhController.dispose();
+    _mmController.dispose();
+    _ssController.dispose();
     _captionController.dispose();
     super.dispose();
   }
+
+  int get _hh => int.tryParse(_hhController.text) ?? 0;
+  int get _mm => int.tryParse(_mmController.text) ?? 0;
+  int get _ss => int.tryParse(_ssController.text) ?? 0;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +158,7 @@ class _ChronometerConfirmationSheetState
             ),
             const SizedBox(height: 24),
             Text(
-              'AMOUNT TO LOG (seconds)',
+              'AMOUNT TO LOG',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -153,21 +166,105 @@ class _ChronometerConfirmationSheetState
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: inputColor,
-                suffixText: 'seconds',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _hhController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      hintText: 'hh',
+                      filled: true,
+                      fillColor: inputColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    ':',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: textColorDark,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 65,
+                  child: TextField(
+                    controller: _mmController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    maxLength: 2,
+                    decoration: InputDecoration(
+                      hintText: 'mm',
+                      counterText: '',
+                      filled: true,
+                      fillColor: inputColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 59) {
+                        _mmController.text = '59';
+                        _mmController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: _mmController.text.length),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    ':',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: textColorDark,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 65,
+                  child: TextField(
+                    controller: _ssController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    maxLength: 2,
+                    decoration: InputDecoration(
+                      hintText: 'ss',
+                      counterText: '',
+                      filled: true,
+                      fillColor: inputColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null && parsed > 59) {
+                        _ssController.text = '59';
+                        _ssController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: _ssController.text.length),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Text(
@@ -240,10 +337,10 @@ class _ChronometerConfirmationSheetState
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  final parsed = double.tryParse(_amountController.text);
-                  if (parsed == null || parsed <= 0) return;
+                  final total = (_hh * 3600 + _mm * 60 + _ss).toDouble();
+                  if (total <= 0) return;
                   Navigator.of(context).pop({
-                    'amount': parsed,
+                    'amount': total,
                     'imageFile': _selectedImage,
                     'caption': _captionController.text.trim().isEmpty
                         ? null

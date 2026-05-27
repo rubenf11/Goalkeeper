@@ -282,6 +282,7 @@ class _HabitDetailsScreen extends State<HabitDetailsScreen> {
                           habitName: widget.name,
                           habitUnit: widget.unit,
                           currentProgress: widget.progress,
+                          chronometer: widget.chronometer,
                         ),
                       ),
                     );

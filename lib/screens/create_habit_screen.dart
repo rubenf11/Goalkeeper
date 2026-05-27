@@ -21,6 +21,10 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _goalController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
+  final TextEditingController _hhController = TextEditingController(text: '0');
+  final TextEditingController _mmController = TextEditingController(text: '0');
+  final TextEditingController _ssController = TextEditingController(text: '0');
+  final FocusNode _hhFocusNode = FocusNode();
 
   final Color _primaryColor = const Color(0xFF006B59);
   final Color _backgroundColor = const Color(0xFFF8FAFC);
@@ -49,8 +53,16 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
     _nameController.dispose();
     _goalController.dispose();
     _unitController.dispose();
+    _hhController.dispose();
+    _mmController.dispose();
+    _ssController.dispose();
+    _hhFocusNode.dispose();
     super.dispose();
   }
+
+  int get _hhParse => int.tryParse(_hhController.text) ?? 0;
+  int get _mmParse => int.tryParse(_mmController.text) ?? 0;
+  int get _ssParse => int.tryParse(_ssController.text) ?? 0;
 
   Future<void> _submit() async {
     final FormState? form = _formKey.currentState;
@@ -62,7 +74,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _isSubmitting = true;
     });
 
-    final double goal = double.parse(_goalController.text.replaceAll(',', ''));
+    final double goal = _chronometerEnabled
+        ? (_hhParse * 3600 + _mmParse * 60 + _ssParse).toDouble()
+        : double.parse(_goalController.text.replaceAll(',', ''));
     final double roundedGoal = double.parse(goal.toStringAsFixed(2));
 
     final HabitCreationResult result = await _habitService.createHabit(
@@ -107,6 +121,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       _chronometerEnabled = false;
       _selectedAccelUnit = 'steps';
       _selectedTracking = 'Manual';
+      _hhController.text = '0';
+      _mmController.text = '0';
+      _ssController.text = '0';
     });
 
     final Timestamp createdAt = createdHabit.createdAt == null
@@ -138,6 +155,29 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: _primaryColor, width: 1.2),
+      ),
+    );
+  }
+
+  InputDecoration _durationInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: _textColorLight),
+      counterText: '',
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: Colors.grey.shade200),
@@ -369,107 +409,246 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                   ],
                 ),
                 const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Goal Amount',
-                            style: TextStyle(
-                              color: _textColorDark,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _goalController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.next,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9,]'),
-                              ),
-                            ],
-                            decoration: _inputDecoration('10'),
-                            validator: (value) {
-                              final String normalized = (value ?? '')
-                                  .replaceAll(',', '')
-                                  .trim();
-                              final int? parsedGoal = int.tryParse(normalized);
-
-                              if (parsedGoal == null || parsedGoal <= 0) {
-                                return 'Enter a valid goal.';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                if (_chronometerEnabled)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Goal Duration',
+                        style: TextStyle(
+                          color: _textColorDark,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          Text(
-                            'Unit',
-                            style: TextStyle(
-                              color: _textColorDark,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          SizedBox(
+                            width: 80,
+                            child: TextFormField(
+                              controller: _hhController,
+                              focusNode: _hhFocusNode,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textAlign: TextAlign.center,
+                              decoration: InputDecoration(
+                                hintText: 'hh',
+                                hintStyle: TextStyle(color: _textColorLight),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide(
+                                    color: _primaryColor,
+                                    width: 1.2,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          if (_accelerometerEnabled)
-                            DropdownButtonFormField<String>(
-                              value: _selectedAccelUnit,
-                              items: _accelerometerUnits
-                                  .map(
-                                    (u) => DropdownMenuItem(
-                                      value: u,
-                                      child: Text(u),
-                                    ),
-                                  )
-                                  .toList(),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: _textColorDark,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 65,
+                            child: TextFormField(
+                              controller: _mmController,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              maxLength: 2,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textAlign: TextAlign.center,
+                              decoration: _durationInputDecoration('mm'),
                               onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedAccelUnit = value;
-                                    _unitController.text = value;
-                                  });
+                                final parsed = int.tryParse(value);
+                                if (parsed != null && parsed > 59) {
+                                  _mmController.text = '59';
+                                  _mmController.selection =
+                                      TextSelection.fromPosition(
+                                        TextPosition(
+                                          offset: _mmController.text.length,
+                                        ),
+                                      );
                                 }
                               },
-                              decoration: _inputDecoration('steps'),
-                            )
-                          else if (_chronometerEnabled)
-                            TextFormField(
-                              controller: _unitController,
-                              enabled: false,
-                              decoration: _inputDecoration('seconds'),
-                              style: TextStyle(color: _textColorLight),
-                            )
-                          else
-                            TextFormField(
-                              controller: _unitController,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: _textColorDark,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 65,
+                            child: TextFormField(
+                              controller: _ssController,
+                              keyboardType: TextInputType.number,
                               textInputAction: TextInputAction.done,
-                              decoration: _inputDecoration('Times'),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter a unit.';
+                              maxLength: 2,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textAlign: TextAlign.center,
+                              decoration: _durationInputDecoration('ss'),
+                              onChanged: (value) {
+                                final parsed = int.tryParse(value);
+                                if (parsed != null && parsed > 59) {
+                                  _ssController.text = '59';
+                                  _ssController.selection =
+                                      TextSelection.fromPosition(
+                                        TextPosition(
+                                          offset: _ssController.text.length,
+                                        ),
+                                      );
+                                }
+                              },
+                              validator: (_) {
+                                if (_hhParse == 0 &&
+                                    _mmParse == 0 &&
+                                    _ssParse == 0) {
+                                  return 'Enter a valid goal.';
                                 }
                                 return null;
                               },
                             ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Goal Amount',
+                              style: TextStyle(
+                                color: _textColorDark,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _goalController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              textInputAction: TextInputAction.next,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9,]'),
+                                ),
+                              ],
+                              decoration: _inputDecoration('10'),
+                              validator: (value) {
+                                final String normalized = (value ?? '')
+                                    .replaceAll(',', '')
+                                    .trim();
+                                final int? parsedGoal = int.tryParse(
+                                  normalized,
+                                );
+
+                                if (parsedGoal == null || parsedGoal <= 0) {
+                                  return 'Enter a valid goal.';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Unit',
+                              style: TextStyle(
+                                color: _textColorDark,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            if (_accelerometerEnabled)
+                              DropdownButtonFormField<String>(
+                                value: _selectedAccelUnit,
+                                items: _accelerometerUnits
+                                    .map(
+                                      (u) => DropdownMenuItem(
+                                        value: u,
+                                        child: Text(u),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedAccelUnit = value;
+                                      _unitController.text = value;
+                                    });
+                                  }
+                                },
+                                decoration: _inputDecoration('steps'),
+                              )
+                            else
+                              TextFormField(
+                                controller: _unitController,
+                                textInputAction: TextInputAction.done,
+                                decoration: _inputDecoration('Times'),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter a unit.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,

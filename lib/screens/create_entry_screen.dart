@@ -40,14 +40,18 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
           : StreamBuilder<List<Habit>>(
               stream: _habitService.watchCurrentUserHabits(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError)
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
 
                 final habits = snapshot.data!;
                 final activeHabits = habits.where((h) => !h.isDone).toList();
 
                 if (activeHabits.isEmpty) {
-                  return const Center(child: Text('No active habits. Create one first.'));
+                  return const Center(
+                    child: Text('No active habits. Create one first.'),
+                  );
                 }
 
                 return ListView.builder(
@@ -71,6 +75,7 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
                               habitName: habit.name,
                               habitUnit: habit.unit,
                               currentProgress: habit.progress,
+                              chronometer: habit.chronometer,
                             ),
                           ),
                         );
