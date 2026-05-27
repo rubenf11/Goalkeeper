@@ -18,7 +18,8 @@ class AchievementsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AchievementService achievementService = context.read<AchievementService>();
+    final AchievementService achievementService = context
+        .read<AchievementService>();
     final User? currentUser = AuthService().currentUser;
 
     return Scaffold(
@@ -30,14 +31,13 @@ class AchievementsScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         title: const Text(
           'Achievements',
-          style: TextStyle(
-            color: _primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: _primaryColor, fontWeight: FontWeight.bold),
         ),
       ),
       body: currentUser == null
-          ? const Center(child: Text('Please sign in to view your achievements.'))
+          ? const Center(
+              child: Text('Please sign in to view your achievements.'),
+            )
           : StreamBuilder<List<CategoryAchievement>>(
               stream: achievementService.watchCategoryAchievements(),
               builder: (context, snapshot) {
@@ -87,16 +87,19 @@ class AchievementsScreen extends StatelessWidget {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: categoryMedals.length,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.78,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.72,
+                              ),
                           itemBuilder: (context, index) {
                             return Padding(
                               padding: const EdgeInsets.all(1.5),
-                              child: _CategoryMedalCard(medal: categoryMedals[index]),
+                              child: _CategoryMedalCard(
+                                medal: categoryMedals[index],
+                              ),
                             );
                           },
                         ),
@@ -111,10 +114,7 @@ class AchievementsScreen extends StatelessWidget {
                         ),
                         child: Text(
                           'Keep adding habits and completing entries to grow each category medal. The more each category is completed, the richer the medal color becomes.',
-                          style: TextStyle(
-                            color: _textColorLight,
-                            height: 1.4,
-                          ),
+                          style: TextStyle(color: _textColorLight, height: 1.4),
                         ),
                       ),
                     ],
@@ -191,8 +191,9 @@ class _CategoryMedalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final HabitCategoryOption categoryOption =
-        HabitCategoryCatalog.optionFor(medal.categoryName);
+    final HabitCategoryOption categoryOption = HabitCategoryCatalog.optionFor(
+      medal.categoryName,
+    );
     final _MedalVisualStyle visualStyle = _visualStyleForTier(medal.tier);
     const double progressElementHeight = 12;
 
@@ -201,7 +202,9 @@ class _CategoryMedalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: visualStyle.borderColor.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: visualStyle.borderColor.withValues(alpha: 0.35),
+        ),
         boxShadow: [
           BoxShadow(
             color: visualStyle.color.withValues(alpha: 0.08),
@@ -238,10 +241,7 @@ class _CategoryMedalCard extends StatelessWidget {
                 ],
                 stops: const [0.2, 1.0],
               ),
-              border: Border.all(
-                color: visualStyle.borderColor,
-                width: 3,
-              ),
+              border: Border.all(color: visualStyle.borderColor, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: visualStyle.color.withValues(alpha: 0.25),
@@ -273,7 +273,9 @@ class _CategoryMedalCard extends StatelessWidget {
                     value: medal.progress,
                     minHeight: progressElementHeight,
                     backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(visualStyle.color),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      visualStyle.color,
+                    ),
                   ),
                 ),
                 Positioned.fill(
