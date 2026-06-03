@@ -85,8 +85,24 @@ class _CreateEntryScreenState extends State<CreateEntryScreen> {
                             progress: habit.progress,
                             unit: habit.unit,
                             streak: habit.streak,
+                            accelerometer: habit.accelerometer,
+                            chronometer: habit.chronometer,
                             limitGoal: habit.limitGoal,
                             onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddEntryScreen(
+                                    habitId: habit.habitId,
+                                    habitName: habit.name,
+                                    habitUnit: habit.unit,
+                                    currentProgress: habit.progress,
+                                    chronometer: habit.chronometer,
+                                  ),
+                                ),
+                              );
+                            },
+                            onRecordTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(

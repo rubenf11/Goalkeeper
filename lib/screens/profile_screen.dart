@@ -437,6 +437,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 );
               },
+              onRecordTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HabitDetailsScreen(
+                      habitId: habit.id,
+                      name: habit.name,
+                      goal: habit.goal,
+                      progress: habit.progress,
+                      unit: habit.unit,
+                      streak: habit.streak,
+                      created_at: Timestamp.fromDate(
+                        habit.createdAt ?? DateTime.now(),
+                      ),
+                      frequency: habit.frequency,
+                      accelerometer: habit.accelerometer,
+                      chronometer: habit.chronometer,
+                      limitGoal: habit.limitGoal,
+                    ),
+                  ),
+                );
+              },
             );
           },
         );
